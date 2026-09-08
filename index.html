@@ -1,0 +1,931 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wrap Party 2026 - Prod1g0 | Celebración de Fin de Rodaje</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Montserrat:wght@300;400;500;600;700&family=Bebas+Neue&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Fondo cinematográfico decorativo -->
+    <div class="film-strip film-strip-top"></div>
+    <div class="spotlight spotlight-left"></div>
+    <div class="spotlight spotlight-right"></div>
+
+    <!-- ==========================================================
+         PANTALLA DE ACCESO INICIAL OBLIGATORIO (LOGIN DE ENTRADA)
+         ========================================================== -->
+    <div id="initial-login-screen" class="login-fullscreen-overlay">
+        <div class="login-card-container">
+            <div class="clapper-icon-big">🎬</div>
+            <h1 class="login-title">FIESTA PROD1G0 <span>2026</span></h1>
+            <p class="login-subtitle">Celebración de Fin de Rodaje • Acceso Exclusivo para el Elenco y Equipo</p>
+
+            <form id="initial-login-form" class="login-form-box">
+                <div class="input-group">
+                    <label for="login-user-select">Selecciona tu Nombre / Personaje *</label>
+                    <select id="login-user-select" required>
+                        <option value="" disabled selected>Selecciona quién eres...</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <label for="login-password-input">Clave de Acceso *</label>
+                    <input type="password" id="login-password-input" placeholder="Ingresa tu clave de 4 dígitos" maxlength="10" autocomplete="off" required>
+                </div>
+
+                <div id="initial-login-error" class="login-error-alert" style="display: none;">
+                    ❌ Clave incorrecta. Por favor verifica e inténtalo nuevamente.
+                </div>
+
+                <button type="submit" class="login-btn">
+                    <span>🎬 INGRESAR A LA EXPERIENCIA</span>
+                </button>
+            </form>
+
+            <div class="login-hint">
+                <small>🔒 Clave por defecto para el equipo: <code>0000</code></small>
+            </div>
+        </div>
+    </div>
+
+    <!-- ==========================================================
+         APLICACIÓN PRINCIPAL (VISIBLE SOLO TRAS LOGIN)
+         ========================================================== -->
+    <div id="main-app-container" style="display: none;">
+        
+        <!-- Header / Barra superior -->
+        <header class="header">
+            <div class="logo">
+                <span class="clapper-icon">🎬</span>
+                <span class="logo-text">FIESTA PROD1G0 <span>2026</span></span>
+            </div>
+
+            <!-- Usuario logueado -->
+            <div class="logged-user-pill">
+                <span class="user-avatar">👤</span>
+                <span id="header-user-name" class="user-name">Invitado</span>
+                <span id="header-admin-badge" class="badge-admin-tag" style="display: none;">👑 ADMIN</span>
+                <button id="btn-logout-app" class="btn-logout-link" title="Cerrar Sesión">Cerrar Sesión</button>
+            </div>
+
+            <!-- Cuenta regresiva en el header -->
+            <div id="header-countdown" class="header-countdown"></div>
+
+            <!-- NAV MODO WIZARD (solo durante la carga inicial) -->
+            <nav id="main-nav" class="nav" style="display: none;">
+                <button class="nav-tab-btn active" data-step="0">🎬 Inicio</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="1">1. Descargos & Gratitud</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="2">2. Encuesta Ternas</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="3">3. Cultura & Música</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="4">🎁 Confirmación</button>
+                <!-- NAV MODO SITE (visible solo tras completar) -->
+                <button class="nav-tab-btn site-only-btn" data-step="5" style="display:none;">🎭 Personajes</button>
+                <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🔄 Cambiar Datos</button>
+                <button id="btn-open-admin-modal" class="btn-admin-nav" style="display: none;">🔒 Panel Producción</button>
+            </nav>
+        </header>
+
+        <main class="main-content">
+
+            <!-- Cuenta regresiva grande (debajo del header, dentro del main) -->
+            <div id="main-countdown-banner" class="countdown-banner"></div>
+
+            <!-- Barra de Progreso de Navegación entre Páginas -->
+            <div class="wizard-progress-container">
+                <div class="wizard-step-indicator active" data-step-target="0">
+                    <span class="step-circle">📌</span>
+                    <span class="step-label">Inicio</span>
+                </div>
+                <div class="wizard-line"></div>
+                <div class="wizard-step-indicator" data-step-target="1">
+                    <span class="step-circle">1</span>
+                    <span class="step-label">Descargos</span>
+                </div>
+                <div class="wizard-line"></div>
+                <div class="wizard-step-indicator" data-step-target="2">
+                    <span class="step-circle">2</span>
+                    <span class="step-label">Ternas</span>
+                </div>
+                <div class="wizard-line"></div>
+                <div class="wizard-step-indicator" data-step-target="3">
+                    <span class="step-circle">3</span>
+                    <span class="step-label">Cultura</span>
+                </div>
+                <div class="wizard-line"></div>
+                <div class="wizard-step-indicator" data-step-target="4">
+                    <span class="step-circle">🎁</span>
+                    <span class="step-label">Final</span>
+                </div>
+            </div>
+
+            <form id="wrap-survey-form" class="film-form-wizard">
+
+                <!-- ==========================================================
+                     PÁGINA 0: INICIO, BIENVENIDA, PROGRAMA Y CONSIGNA
+                     ========================================================== -->
+                <div class="wizard-page active" id="page-0">
+                    <div class="welcome-banner-user">
+                        <h2>¡Hola, <span id="welcome-user-display" class="highlight-gold">Compañero/a</span>! 👋</h2>
+                        <p>Bienvenido/a a la plataforma previa de la fiesta. Completá tus descargos, votos para las ternas y gustos culturales.</p>
+                    </div>
+
+                    <!-- Claqueta + Botón de inicio al costado -->
+                    <div class="hero-clapper-row">
+                        <div class="clapperboard">
+                            <div class="clapper-top">
+                                <div class="stripes"></div>
+                            </div>
+                            <div class="clapper-body">
+                                <div class="clapper-field">
+                                    <span class="label">PRODUCCIÓN:</span>
+                                    <span class="value" id="film-title">"PROD1G0"</span>
+                                </div>
+                                <div class="clapper-row">
+                                    <div class="clapper-field half">
+                                        <span class="label">ESCENA:</span>
+                                        <span class="value">WRAP PARTY</span>
+                                    </div>
+                                    <div class="clapper-field half">
+                                        <span class="label">AÑO:</span>
+                                        <span class="value">2026</span>
+                                    </div>
+                                </div>
+                                <div class="clapper-row">
+                                    <div class="clapper-field third">
+                                        <span class="label">FECHA:</span>
+                                        <span class="value">31 OCT 2026</span>
+                                    </div>
+                                    <div class="clapper-field third">
+                                        <span class="label">HORA:</span>
+                                        <span class="value">21:00 HS</span>
+                                    </div>
+                                    <div class="clapper-field third">
+                                        <span class="label">DRESS CODE:</span>
+                                        <span class="value">GALA / CASUAL CHIC</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botón visible al costado de la claqueta -->
+                        <div class="hero-start-panel">
+                            <h1 class="hero-title-side">¡CELEBRAMOS EL FIN DE RODAJE!</h1>
+                            <p class="hero-subtitle-side">
+                                Tu información es confidencial y será el motor de los momentos más divertidos y emotivos de la noche.
+                            </p>
+                            <button type="button" class="wizard-next-btn hero-start-btn" onclick="unlockNextStep(1)">
+                                🎬 COMENZAR A INGRESAR MIS DATOS ➔
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Consigna de Regalos Absurdos -->
+                    <div class="gift-banner" id="consigna-regalo" style="margin-top:2rem;">
+                        <div class="gift-icon">🎁⚡</div>
+                        <div class="gift-text">
+                            <h3>¡CONSIGNA OBLIGATORIA PARA CADA INVITADO!</h3>
+                            <p>
+                                Cada uno debe traer a la fiesta <strong>un objeto absurdo, insólito o que le sobre en su casa</strong> envuelto para regalo (un adorno raro, un cable viejo, una taza sin asa, un manual viejo... lo que sea).
+                                Estos objetos serán los <strong>galardones oficiales</strong> que se entregarán en la Ceremonia de Premiación a los ganadores de cada terna. ¡Nadie sabrá qué le tocará!
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Cronograma de la Fiesta: oculto hasta completar el wizard -->
+                    <div class="section-card" id="timeline-section" style="display:none; margin-top:2rem;">
+                        <div class="section-header">
+                            <span class="badge">TIMELINE DE LA FIESTA</span>
+                            <h2 class="section-title"><span>🗓️</span> ITINERARIO DE LA NOCHE</h2>
+                            <p class="section-desc">Así viviremos la celebración paso a paso:</p>
+                        </div>
+
+                        <div class="timeline-container">
+                            <div class="timeline-item">
+                                <div class="timeline-badge">1</div>
+                                <div class="timeline-content">
+                                    <h4>🍸 Recepción</h4>
+                                    <p>Alfombra roja, bienvenida, entrega en secreto del regalo absurdo y primeros brindis.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-badge">2</div>
+                                <div class="timeline-content">
+                                    <h4>🎲 Actividad 1</h4>
+                                    <p>Dinámica sorpresa armada a partir de sus películas, cuadros y gustos compartidos.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item highlight-dance">
+                                <div class="timeline-badge">🪩</div>
+                                <div class="timeline-content">
+                                    <h4>💃 Tanda de Baile — Pista Abierta</h4>
+                                    <p>Música de fiesta y tragos para entrar en calor.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item">
+                                <div class="timeline-badge">4</div>
+                                <div class="timeline-content">
+                                    <h4>🎤 Actividad 2</h4>
+                                    <p>Momento catártico y emotivo: descargos, anécdotas y agradecimientos sinceros.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item highlight-dance">
+                                <div class="timeline-badge">🪩</div>
+                                <div class="timeline-content">
+                                    <h4>🕺 Tanda de Baile — Pista Abierta</h4>
+                                    <p>Suenan los temas más votados por el equipo.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item highlight-awards">
+                                <div class="timeline-badge">🏆</div>
+                                <div class="timeline-content">
+                                    <h4>🎬 Final — Ceremonia de Premiación</h4>
+                                    <p>Entrega de las 10 Ternas con los galardones y regalos absurdos aportados por todos.</p>
+                                </div>
+                            </div>
+                            <div class="timeline-item highlight-dance">
+                                <div class="timeline-badge">🔥</div>
+                                <div class="timeline-content">
+                                    <h4>🎉 Tanda de Baile y Limpieza</h4>
+                                    <p>Fiesta total hasta que se apague la última luz del set.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+
+                <!-- ==========================================================
+                     PÁGINA 1: APARTADO 1 - DESCARGOS Y GRATITUD (PRIMER PASO POST-LOGIN)
+                     ========================================================== -->
+                <div class="wizard-page" id="page-1">
+                    <div class="page-header-block">
+                        <span class="badge">PRIMER APARTADO</span>
+                        <h2 class="section-title"><span>⚖️</span> DESCARGOS Y GRATITUD</h2>
+                        <p class="section-desc">
+                            Información confidencial para la dinámica del <strong>"Tribunal del Rodaje" (Actividad 2 de la fiesta)</strong>.<br>
+                            ¡Catarsis con humor y cariño hacia el equipo!
+                        </p>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="input-group card-feedback card-descargo">
+                            <div class="feedback-header">
+                                <span class="feedback-icon">🗯️</span>
+                                <h4>1. Descargos</h4>
+                            </div>
+                            <label for="descargo-text">Comenta algo que tengas que criticar sobre el set de filmación, el rodaje en general o algún momento ingrato que hayas pasado *</label>
+                            <textarea id="descargo-text" name="descargo" rows="6" placeholder="Ej: Las horas de espera con frío en la locación B / El catering sin café caliente / Cuando se cayó la utilería justo en la mejor toma..." required></textarea>
+                        </div>
+
+                        <div class="input-group card-feedback card-gratitud">
+                            <div class="feedback-header">
+                                <span class="feedback-icon">💖</span>
+                                <h4>2. Gratitud</h4>
+                            </div>
+                            <label for="gratitud-text">Completa algún agradecimiento, mención o comentario positivo sobre uno o varios compañeros, o algún momento hermoso del rodaje *</label>
+                            <textarea id="gratitud-text" name="gratitud" rows="6" placeholder="Ej: Gracias a todo el equipo de arte por resolver cada imprevisto / La generosidad de los actores / El compañerismo y las risas en cada pausa..." required></textarea>
+                        </div>
+                    </div>
+
+                    <div id="step1-error" class="step-error-msg" style="display:none;"></div>
+                    <div class="wizard-nav-btns">
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(0)">
+                            ⬅ Volver a Inicio
+                        </button>
+                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(1)">
+                            Siguiente: 2. Encuesta de Ternas ➔
+                        </button>
+                    </div>
+                </div>
+
+
+                <!-- ==========================================================
+                     PÁGINA 2: APARTADO 2 - ENCUESTA DE LAS 10 TERNAS
+                     Modo wizard (de a una) o modo scroll (edición con datos previos)
+                     ========================================================== -->
+                <div class="wizard-page" id="page-2">
+                    <div class="page-header-block">
+                        <span class="badge">SEGUNDO APARTADO</span>
+                        <h2 class="section-title"><span>🏆</span> ENCUESTA OFICIAL DE PREMIOS (10 TERNAS)</h2>
+                        <p class="section-desc" id="ternas-mode-desc">
+                            Selecciona a tus nominados de la lista desplegable. <br>
+                            <strong>👑 1er Nominado = 2 PUNTOS</strong> | <strong>⭐ 2do Nominado = 1 PUNTO</strong>.<br>
+                            Los ganadores recibirán su galardón absurdo en el Gran Final de la noche.
+                        </p>
+                    </div>
+
+                    <!-- MODO WIZARD: barra de progreso interna de ternas -->
+                    <div id="terna-wizard-progress" class="terna-wizard-progress" style="display:none;">
+                        <span id="terna-wizard-label" class="terna-wizard-label">Terna 1 de 10</span>
+                        <div class="terna-wizard-bar-track">
+                            <div id="terna-wizard-bar" class="terna-wizard-bar" style="width:10%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Contenedor de ternas: en modo wizard muestra de a una; en scroll todas -->
+                    <div class="ternas-container" id="ternas-container">
+
+                        <!-- Terna 1 -->
+                        <div class="terna-box" id="terna-step-1">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 1</span>
+                                <h3>Premio al Actor más responsable que siempre se sabía la letra</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna1_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna1_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 2 -->
+                        <div class="terna-box" id="terna-step-2">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 2</span>
+                                <h3>Premio al menos responsable que nunca sabía la letra</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna2_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna2_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 3 -->
+                        <div class="terna-box" id="terna-step-3">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 3</span>
+                                <h3>Premio al que tuvo que repetir más veces una toma</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna3_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna3_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 4 -->
+                        <div class="terna-box" id="terna-step-4">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 4</span>
+                                <h3>Premio al que pasó por todos los roles (actor, productor, sonidista, asistente, etc.)</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna4_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna4_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 5 -->
+                        <div class="terna-box" id="terna-step-5">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 5</span>
+                                <h3>Premio a la revelación del set</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna5_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna5_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 6 -->
+                        <div class="terna-box" id="terna-step-6">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 6</span>
+                                <h3>Premio al artista que siempre se quiere ir temprano</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna6_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna6_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 7 -->
+                        <div class="terna-box" id="terna-step-7">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 7</span>
+                                <h3>Premio al peor Artista</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna7_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna7_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 8 -->
+                        <div class="terna-box" id="terna-step-8">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 8</span>
+                                <h3>Premio al mejor actor</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna8_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna8_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 9 -->
+                        <div class="terna-box" id="terna-step-9">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 9</span>
+                                <h3>Premio a la mejor actriz</h3>
+                            </div>
+                            <div class="grid-2">
+                                <div class="input-group">
+                                    <label class="score-label label-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna9_voto1" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna9_voto2" class="actor-select">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Terna 10 -->
+                        <div class="terna-box full-box" id="terna-step-10">
+                            <div class="terna-header">
+                                <span class="terna-badge">TERNA 10</span>
+                                <h3>Premio al mejor momento del proyecto</h3>
+                            </div>
+                            <div class="input-group">
+                                <label for="terna-10">Describe la escena, día o momento épico del rodaje que merece este premio *</label>
+                                <textarea id="terna-10" name="terna10" rows="3" placeholder="Ej: La toma nocturna de lluvia donde todos terminamos festejando / La escena de la cena familiar..."></textarea>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Navegación interna del mini-wizard de ternas (modo primera vez) -->
+                    <div id="terna-wizard-nav" class="terna-wizard-nav" style="display:none;">
+                        <div id="terna-step-error" class="step-error-msg" style="display:none;"></div>
+                        <div class="wizard-nav-btns">
+                            <button type="button" class="wizard-prev-btn" id="btn-terna-prev" onclick="ternaWizardPrev()">
+                                ⬅ Terna anterior
+                            </button>
+                            <button type="button" class="wizard-next-btn" id="btn-terna-next" onclick="ternaWizardNext()">
+                                Siguiente terna ➔
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Navegación del paso 2 (modo scroll / final del wizard de ternas) -->
+                    <div id="step2-nav" class="wizard-nav-btns">
+                        <div id="step2-error" class="step-error-msg" style="display:none;"></div>
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(1)">
+                            ⬅ Volver a 1. Descargos
+                        </button>
+                        <button type="button" class="wizard-next-btn" id="btn-step2-next" onclick="validateAndNext(2)">
+                            Siguiente: 3. Cultura & Música ➔
+                        </button>
+                    </div>
+                </div>
+
+
+                <!-- ==========================================================
+                     PÁGINA 3: APARTADO 3 - GUSTOS CULTURALES & MÚSICA (ACTIVIDAD 1 & BAILE)
+                     ========================================================== -->
+                <div class="wizard-page" id="page-3">
+                    <div class="page-header-block">
+                        <span class="badge">TERCER APARTADO</span>
+                        <h2 class="section-title"><span>🎨</span> GUSTOS CULTURALES & MÚSICA</h2>
+                        <p class="section-desc">
+                            Tus elecciones se utilizarán para armar la <strong>Actividad 1 (Juego de trivia e inspiraciones)</strong> y la <strong>playlist para las tandas de baile</strong>.
+                        </p>
+                    </div>
+
+                    <div class="form-block-page">
+                        <div class="grid-2">
+                            <div class="input-group">
+                                <label for="fav-movies">Película(s) favorita(s) 🎬 *</label>
+                                <input type="text" id="fav-movies" name="favMovies" placeholder="Ej: Cinema Paradiso / Pulp Fiction / El Padrino / Nueve Reinas" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="fav-actors">Actor(es) y Actriz(ces) favoritos/as ⭐ *</label>
+                                <input type="text" id="fav-actors" name="favActors" placeholder="Ej: Ricardo Darín / Meryl Streep / Al Pacino / Cate Blanchett" required>
+                            </div>
+                        </div>
+
+                        <div class="grid-2">
+                            <div class="input-group">
+                                <label for="fav-paintings">Cuadro(s) o artista(s) plástico(s) favorito(s) 🖼️ *</label>
+                                <input type="text" id="fav-paintings" name="favPaintings" placeholder="Ej: La Noche Estrellada (Van Gogh) / El Beso (Klimt) / Guernica" required>
+                            </div>
+                            <div class="input-group">
+                                <label for="fav-music">Músicos o Bandas favoritas (para bailar esa noche) 🎶 *</label>
+                                <input type="text" id="fav-music" name="favMusic" placeholder="Ej: Charly García / Queen / Daft Punk / Dua Lipa / Soda Stereo" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step3-error" class="step-error-msg" style="display:none;"></div>
+                    <div class="wizard-nav-btns">
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(2)">
+                            ⬅ Volver a 2. Ternas
+                        </button>
+                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(3)">
+                            Siguiente: Confirmar y Enviar ➔
+                        </button>
+                    </div>
+                </div>
+
+
+                <!-- ==========================================================
+                     PÁGINA 4: CONFIRMACIÓN DE REGALO ABSURDO Y ENVÍO
+                     ========================================================== -->
+                <div class="wizard-page" id="page-4">
+                    <div class="page-header-block">
+                        <span class="badge badge-gold">PASO FINAL</span>
+                        <h2 class="section-title"><span>🎁</span> CONFIRMACIÓN Y ENVÍO A PRODUCCIÓN</h2>
+                        <p class="section-desc">
+                            Ya completaste todas las secciones. Solo falta confirmar tu compromiso con el regalo absurdo para la entrega final de premios.
+                        </p>
+                    </div>
+
+                    <div class="final-recap-box">
+                        <div class="recap-icon">🎬🎁🏆</div>
+                        <h3>¿Estás listo/a para la fiesta?</h3>
+                        <p>
+                            Al hacer clic en enviar, toda tu información quedará guardada de forma segura para la producción del evento.
+                        </p>
+
+                        <div class="gift-confirm-box">
+                            <label class="checkbox-container">
+                                <input type="checkbox" id="confirm-gift" name="confirmGift" required>
+                                <span class="checkmark"></span>
+                                <span class="checkbox-label">
+                                    🎁 <strong>Confirmo que llevaré mi REGALO ABSURDO / INSÓLITO envuelto</strong> a la fiesta para la Gran Ceremonia de Premios.
+                                </span>
+                            </label>
+                        </div>
+
+                        <div class="form-submit-container">
+                            <button type="submit" class="submit-btn" id="submit-btn">
+                                <span>🚀 ENVIAR TODO A PRODUCCIÓN</span>
+                            </button>
+                            <p class="submit-notice">🔒 Tu información queda protegida y solo será revelada en las dinámicas de la noche.</p>
+                        </div>
+                    </div>
+
+                    <div class="wizard-nav-btns">
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(3)">
+                            ⬅ Volver a 3. Cultura & Música
+                        </button>
+                        <div></div>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PÁGINA 5: PERSONAJES
+                     ========================================================== -->
+                <div class="wizard-page" id="page-5">
+                    <div class="page-header-block">
+                        <span class="badge">ELENCO & EQUIPO</span>
+                        <h2 class="section-title"><span>🎭</span> PERSONAJES DE PROD1G0</h2>
+                        <p class="section-desc">Hacé clic en un personaje para ver su ficha.</p>
+                    </div>
+
+                    <div class="personajes-grid" id="personajes-grid">
+                        <!-- Se genera dinámicamente por JS -->
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PÁGINA 6: CAMBIAR DATOS
+                     ========================================================== -->
+                <div class="wizard-page" id="page-6">
+                    <div class="cambiar-datos-container">
+                        <div class="cambiar-datos-card">
+                            <div class="cambiar-datos-icon">🔄</div>
+                            <h2>¿Querés modificar tus datos?</h2>
+                            <p id="cambiar-datos-info" class="cambiar-datos-info"></p>
+                            <div id="cambiar-datos-actions" class="cambiar-datos-actions"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+        </main>
+    </div>
+
+    <!-- MODAL DE ÉXITO -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">🎉🎬</div>
+            <h2>¡CORTE Y QUEDA!</h2>
+            <p>Tus descargos, agradecimientos, votos de ternas (2 pts y 1 pt) y gustos culturales ya están en manos de la producción de <strong>"Prod1g0 2026"</strong>.</p>
+            <p class="modal-highlight">¡No olvides llevar tu regalo absurdo envuelto a la fiesta!</p>
+            <button id="close-modal-btn" class="modal-close-btn" onclick="resetWizardAndCloseModal()">Listo, volver al inicio</button>
+        </div>
+    </div>
+
+    <!-- MODAL PANEL DE ADMINISTRACIÓN (PROTEGIDO) - REDISEÑADO -->
+    <div id="admin-panel-modal" class="modal full-screen-modal">
+        <div class="admin-panel-container">
+
+            <!-- Header del panel -->
+            <div class="admin-header">
+                <div class="admin-title">
+                    <h2>🎬 PANEL DE PRODUCCIÓN — PROD1G0 2026</h2>
+                    <span class="badge badge-gold">ACCESO EXCLUSIVO DIRECTOR</span>
+                </div>
+                <div class="admin-header-btns">
+                    <button id="btn-export-csv" class="btn-secondary">📥 CSV (Excel)</button>
+                    <button id="btn-export-json" class="btn-secondary">💾 Backup JSON</button>
+                    <button id="btn-load-demo" class="btn-secondary">🎲 Demo</button>
+                    <button id="btn-close-admin" class="btn-danger">Cerrar ✕</button>
+                </div>
+            </div>
+
+            <!-- Stats rápidos -->
+            <div class="admin-stats-grid">
+                <div class="stat-card">
+                    <span class="stat-title">Total Respuestas</span>
+                    <span class="stat-number" id="stat-total">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Regalos Prometidos</span>
+                    <span class="stat-number" id="stat-gifts">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Descargos</span>
+                    <span class="stat-number" id="stat-descargos">0</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-title">Agradecimientos</span>
+                    <span class="stat-number" id="stat-gratitudes">0</span>
+                </div>
+            </div>
+
+            <!-- SECCIONES ACORDEÓN -->
+            <div class="admin-accordion">
+
+                <!-- SECCIÓN 1: ENCUESTA DE TERNAS -->
+                <div class="accord-section" id="accord-encuesta">
+                    <button class="accord-btn" onclick="toggleAccord('accord-encuesta')">
+                        <span class="accord-icon">🏆</span>
+                        <span class="accord-title">ENCUESTA — Votaciones de Ternas</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body">
+                        <!-- Sub-secciones internas -->
+                        <div class="accord-sub-tabs">
+                            <button class="sub-tab-btn active" data-sub="sub-general" onclick="toggleSubTab(this,'accord-encuesta')">📊 Votación General (Ranking)</button>
+                            <button class="sub-tab-btn" data-sub="sub-por-usuario" onclick="toggleSubTab(this,'accord-encuesta')">👤 Votación por Usuario</button>
+                            <button class="sub-tab-btn" data-sub="sub-intentos" onclick="toggleSubTab(this,'accord-encuesta')">🔁 Intentos por Usuario</button>
+                        </div>
+                        <div id="sub-general" class="sub-tab-content active">
+                            <div class="ternas-summary-grid" id="ternas-summary-container"></div>
+                        </div>
+                        <div id="sub-por-usuario" class="sub-tab-content">
+                            <div class="input-group" style="max-width:320px; margin-bottom:1.2rem;">
+                                <label>Ver votos de:</label>
+                                <select id="admin-user-vote-select">
+                                    <option value="" disabled selected>Selecciona un usuario...</option>
+                                </select>
+                            </div>
+                            <div id="admin-user-votes-detail"></div>
+                        </div>
+                        <div id="sub-intentos" class="sub-tab-content">
+                            <div id="admin-intentos-table"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 2: DESCARGOS & GRATITUD -->
+                <div class="accord-section" id="accord-descargos">
+                    <button class="accord-btn" onclick="toggleAccord('accord-descargos')">
+                        <span class="accord-icon">⚖️</span>
+                        <span class="accord-title">TRIBUNAL — Descargos & Gratitud</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div class="grid-2">
+                            <div class="admin-box">
+                                <h3 class="box-title title-descargo">🗯️ Muro de Descargos</h3>
+                                <div id="admin-descargos-list" class="feedback-stream"></div>
+                            </div>
+                            <div class="admin-box">
+                                <h3 class="box-title title-gratitud">💖 Muro de Gratitud</h3>
+                                <div id="admin-gratitud-list" class="feedback-stream"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 3: CULTURA & MÚSICA -->
+                <div class="accord-section" id="accord-cultura">
+                    <button class="accord-btn" onclick="toggleAccord('accord-cultura')">
+                        <span class="accord-icon">🎨</span>
+                        <span class="accord-title">CULTURA & MÚSICA — Playlist e Inspiraciones</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div class="admin-box">
+                            <h3 class="box-title">🎶 Gustos del Equipo</h3>
+                            <div id="admin-culture-list" class="culture-stream"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 4: TABLA COMPLETA -->
+                <div class="accord-section" id="accord-tabla">
+                    <button class="accord-btn" onclick="toggleAccord('accord-tabla')">
+                        <span class="accord-icon">📋</span>
+                        <span class="accord-title">TABLA COMPLETA — Todos los datos</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div class="table-wrapper">
+                            <table class="data-table" id="full-admin-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th><th>Invitado</th><th>Cambios</th>
+                                        <th>Regalo</th><th>Descargo</th><th>Gratitud</th>
+                                        <th>Películas</th><th>Música</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="full-admin-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 5: GESTIÓN DE DATOS -->
+                <div class="accord-section accord-section-danger" id="accord-gestion">
+                    <button class="accord-btn accord-btn-danger" onclick="toggleAccord('accord-gestion')">
+                        <span class="accord-icon">🗑️</span>
+                        <span class="accord-title">GESTIÓN — Borrar datos de usuarios</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div class="gestion-grid">
+                            <div class="admin-box gestion-box">
+                                <h3 class="box-title" style="color:#f87171;">🗑️ Borrar datos de un usuario</h3>
+                                <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1rem;">
+                                    Se borrarán todos sus datos y su contador de cambios quedará en cero.
+                                </p>
+                                <div class="input-group">
+                                    <label>Seleccionar usuario</label>
+                                    <select id="admin-delete-user-select">
+                                        <option value="" disabled selected>Selecciona un usuario...</option>
+                                    </select>
+                                </div>
+                                <button id="btn-delete-user" class="btn-danger" style="width:100%;margin-top:.5rem;">
+                                    🗑️ Borrar datos de este usuario
+                                </button>
+                            </div>
+                            <div class="admin-box gestion-box">
+                                <h3 class="box-title" style="color:#f87171;">💣 Resetear todo el sistema</h3>
+                                <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1rem;">
+                                    Borra absolutamente todos los datos. El sitio quedará como nuevo.
+                                </p>
+                                <div class="danger-zone-box">
+                                    <span class="danger-icon">⚠️</span>
+                                    <span>Se borrarán los datos de <strong id="stat-total-gestion">0</strong> usuario(s).</span>
+                                </div>
+                                <button id="btn-clear-all" class="btn-danger" style="width:100%;margin-top:1rem;">
+                                    💣 BORRAR TODO Y LLEVAR A CERO
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div><!-- fin accordion -->
+        </div>
+    </div>
+
+    <!-- Footer Estilo Créditos de Película -->
+    <footer class="footer">
+        <div class="film-strip film-strip-bottom"></div>
+        <div class="credits">
+            <h3>CRÉDITOS FINALES</h3>
+            <p>LARGOMETRAJE: "PROD1G0" (2026)</p>
+            <p class="credits-small">UNA CELEBRACIÓN A LA PASIÓN, EL TRABAJO EN EQUIPO Y EL ARTE INDEPENDIENTE.</p>
+            <p class="copyright">© 2026 FIESTA PRÓDIGO • TODOS LOS DERECHOS RESERVADOS</p>
+        </div>
+    </footer>
+
+    <!-- MODAL: DATOS PREVIOS CARGADOS -->
+    <div id="previous-data-modal" class="modal">
+        <div class="modal-content modal-prev-data">
+            <div class="modal-icon">📋</div>
+            <h2>¡Ya tenés datos cargados!</h2>
+            <p id="prev-data-changes-info" class="prev-data-changes-info"></p>
+            <div id="prev-data-summary" class="prev-data-summary"></div>
+            <div class="prev-data-actions">
+                <button id="btn-prev-edit" class="btn-prev-edit">✏️ Sí, quiero modificar mis datos</button>
+                <button id="btn-prev-keep" class="btn-prev-keep">✅ No, mantener mis datos actuales</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: LÍMITE DE CAMBIOS ALCANZADO -->
+    <div id="max-changes-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-icon">🔒</div>
+            <h2>Datos bloqueados</h2>
+            <p>Ya realizaste <strong>3 modificaciones</strong>. Tus datos están guardados y no pueden modificarse más.</p>
+            <p class="modal-highlight">¡Nos vemos en la fiesta el 31 de Octubre! 🎬</p>
+            <button class="modal-close-btn" onclick="document.getElementById('max-changes-modal').classList.remove('active')">Entendido</button>
+        </div>
+    </div>
+
+    <!-- MODAL: FICHA DE PERSONAJE -->
+    <div id="personaje-modal" class="modal">
+        <div class="modal-content personaje-modal-content">
+            <button class="modal-close-x" onclick="document.getElementById('personaje-modal').classList.remove('active')">✕</button>
+            <div id="personaje-modal-body"></div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
