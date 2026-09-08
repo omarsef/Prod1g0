@@ -2875,3 +2875,280 @@ textarea:focus {
         justify-content: flex-end;
     }
 }
+
+/* ==========================================================
+   PASO 1 — ELECCIÓN DE COLOR REPRESENTATIVO
+   ========================================================== */
+
+.color-choice-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2rem 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.color-choice-title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    color: var(--text-primary);
+    margin-bottom: 0.4rem;
+    letter-spacing: 0.5px;
+}
+
+.color-choice-desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    margin-bottom: 1.4rem;
+}
+
+.color-choice-grid {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.color-choice-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    background: var(--bg-input);
+    border: 2px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.5rem 2.5rem;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 130px;
+    position: relative;
+}
+
+.color-choice-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.color-choice-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+}
+
+.color-choice-card:has(input:checked) {
+    border-width: 3px;
+    transform: translateY(-4px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+.color-rojo:has(input:checked)     { border-color: #e53935; background: rgba(229,57,53,0.12); }
+.color-amarillo:has(input:checked) { border-color: #f9a825; background: rgba(249,168,37,0.12); }
+.color-verde:has(input:checked)    { border-color: #2e7d32; background: rgba(46,125,50,0.12); }
+
+.color-choice-swatch {
+    font-size: 3rem;
+    line-height: 1;
+    filter: drop-shadow(0 4px 10px rgba(0,0,0,.4));
+}
+
+.color-choice-name {
+    font-family: var(--font-heading);
+    font-size: 1.1rem;
+    letter-spacing: 2px;
+    color: var(--text-primary);
+}
+
+/* ==========================================================
+   PASO 1 — ASISTENCIA (Solo / Acompañado)
+   ========================================================== */
+
+.asistencia-section {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 2rem 1.5rem;
+}
+
+.asistencia-title {
+    font-family: var(--font-heading);
+    font-size: 1.2rem;
+    color: var(--text-primary);
+    margin-bottom: 1.2rem;
+    letter-spacing: 0.5px;
+}
+
+.asistencia-opts {
+    display: flex;
+    gap: 1.2rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+
+.asistencia-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg-input);
+    border: 2px solid var(--border-subtle);
+    border-radius: 12px;
+    padding: 1.3rem 2rem;
+    cursor: pointer;
+    transition: var(--transition);
+    min-width: 130px;
+    position: relative;
+}
+
+.asistencia-card input[type="radio"] {
+    position: absolute;
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.asistencia-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--gold-primary);
+}
+
+.asistencia-card:has(input:checked),
+.asistencia-card.asistencia-selected {
+    border-color: var(--gold-primary);
+    background: rgba(229,169,60,0.1);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(229,169,60,0.2);
+}
+
+.asistencia-icon {
+    font-size: 2.5rem;
+    line-height: 1;
+}
+
+.asistencia-label {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.acompaniantes-fields {
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: 10px;
+    padding: 1.2rem 1.4rem;
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+/* ==========================================================
+   ADMIN — ELENCO: campos en 2 columnas
+   ========================================================== */
+
+.foto-edit-fields-full {
+    width: 100%;
+}
+
+.foto-edit-row2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto auto;
+    gap: 0.6rem;
+    align-items: end;
+}
+
+.foto-edit-col {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.foto-edit-col-sm {
+    min-width: 60px;
+    max-width: 80px;
+}
+
+.foto-edit-color {
+    height: 34px;
+    padding: 2px 4px !important;
+    cursor: pointer;
+    border-radius: 6px;
+}
+
+@media (max-width: 640px) {
+    .foto-edit-row2 {
+        grid-template-columns: 1fr 1fr;
+    }
+    .color-choice-card, .asistencia-card {
+        min-width: 100px;
+        padding: 1.1rem 1.5rem;
+    }
+}
+
+/* ================================================================
+   GUARDAR Y CERRAR — botón del header del panel admin
+   ================================================================ */
+.btn-save-close {
+    background: var(--gold-primary);
+    color: #1a1a2e;
+    border: none;
+    border-radius: 6px;
+    padding: .45rem 1rem;
+    font-weight: 700;
+    font-size: .85rem;
+    cursor: pointer;
+    transition: opacity .2s;
+}
+.btn-save-close:hover { opacity: .85; }
+
+/* ================================================================
+   ASISTENCIA & COLORES — sección del panel admin
+   ================================================================ */
+.asistencia-colores-tabla {
+    padding: 1rem 0;
+}
+
+/* Fila de totales por color */
+.ac-totals {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1.5rem;
+}
+.ac-total-pill {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem 1.1rem;
+    border-radius: 30px;
+    font-size: .95rem;
+    min-width: 120px;
+}
+.ac-total-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    margin-left: auto;
+}
+
+/* Tabla de asistencia */
+.ac-table-wrap {
+    overflow-x: auto;
+}
+.ac-table td, .ac-table th {
+    vertical-align: middle;
+    white-space: nowrap;
+}
+.ac-companions-cell {
+    white-space: normal !important;
+    min-width: 200px;
+}
+
+/* Pastillas de acompañantes */
+.ac-companion-pill {
+    display: inline-block;
+    padding: .2rem .6rem;
+    border-radius: 20px;
+    font-size: .8rem;
+    margin: .2rem .2rem .2rem 0;
+    white-space: nowrap;
+}

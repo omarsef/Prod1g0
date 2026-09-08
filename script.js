@@ -4,8 +4,9 @@
 
 const STORAGE_KEY = 'prodigo_2026_responses_v4';
 const SESSION_USER_KEY = 'prodigo_2026_active_user';
-const MAX_EDITS = 3; // máximo de cambios permitidos por usuario
-const USERS_KEY   = 'prodigo_2026_users_v1'; // storage para usuarios y claves custom
+const MAX_EDITS = 3;           // máximo de cambios de votación por usuario
+const MAX_EDITS_ASIST = 2;     // máximo de cambios de asistencia por usuario
+const USERS_KEY = 'prodigo_2026_users_v1';
 
 // Listado Oficial de Integrantes y Personajes de "El Pródigo" — ordenado alfabéticamente
 const ACTORS_AND_CREW = [
@@ -169,12 +170,12 @@ function applyUserSession(user) {
     if (user.isAdmin) {
         adminBadge.style.display = 'inline-block';
         btnAdminNav.style.display = 'inline-block';
-        maxAllowedStep = 4;
+        maxAllowedStep = 5;
         userHasCompleted = true;
         document.getElementById('main-nav').style.display = 'flex';
         document.getElementById('timeline-section').style.display = 'block';
         setTernasMode('scroll');
-        setNavMode('site'); // admin ve el nav de site
+        setNavMode('site');
         updateNavLockState();
         initPersonajesPage();
         goToStep(0);
@@ -186,15 +187,20 @@ function applyUserSession(user) {
 
     const existing = getStoredData().find(d => d.guestName === user.name);
 
+    const heroStartBtn = document.getElementById('btn-hero-start');
+
     if (existing) {
         const editCount = existing.editCount || 0;
         userHasCompleted = true;
+
+        // Ocultar el botón de inicio: el usuario ya eligió color y cargó sus datos
+        if (heroStartBtn) heroStartBtn.style.display = 'none';
 
         prefillFormWithExisting(existing);
         initPersonajesPage();
 
         if (editCount >= MAX_EDITS) {
-            maxAllowedStep = 4;
+            maxAllowedStep = 5;
             document.getElementById('main-nav').style.display = 'flex';
             document.getElementById('timeline-section').style.display = 'block';
             setTernasMode('scroll');
@@ -203,7 +209,7 @@ function applyUserSession(user) {
             goToStep(0);
             document.getElementById('max-changes-modal').classList.add('active');
         } else {
-            maxAllowedStep = 4;
+            maxAllowedStep = 5;
             document.getElementById('main-nav').style.display = 'flex';
             document.getElementById('timeline-section').style.display = 'block';
             setTernasMode('scroll');
@@ -213,7 +219,8 @@ function applyUserSession(user) {
             showPreviousDataModal(existing, editCount);
         }
     } else {
-        // Primera vez: wizard paso a paso
+        // Primera vez: wizard paso a paso — mostrar el botón
+        if (heroStartBtn) heroStartBtn.style.display = '';
         userHasCompleted = false;
         maxAllowedStep = 0;
         currentTernaStep = 1;
@@ -243,9 +250,12 @@ function setNavMode(mode) {
 // Actualiza visualmente qué botones del nav están habilitados
 function updateNavLockState() {
     document.querySelectorAll('.nav-tab-btn[data-step]').forEach(btn => {
-        const step = parseInt(btn.getAttribute('data-step'), 10);
+        const step    = parseInt(btn.getAttribute('data-step'), 10);
         const isAdmin = loggedUser && loggedUser.isAdmin;
-        if (isAdmin || step <= maxAllowedStep) {
+        // Los botones site-only (Personajes, Cambiar Votación) siempre desbloqueados
+        // cuando el usuario ya completó (están visibles solo en modo site)
+        const isSiteOnly = btn.classList.contains('site-only-btn');
+        if (isAdmin || isSiteOnly || step <= maxAllowedStep) {
             btn.classList.add('unlocked');
         } else {
             btn.classList.remove('unlocked');
@@ -288,7 +298,21 @@ function showPreviousDataModal(existing, editCount) {
 
 // Pre-rellena los campos del wizard con los datos guardados
 function prefillFormWithExisting(data) {
-    // Paso 1
+    // Paso 1: Color y Asistencia
+    if (data.colorEvento) {
+        const colorRadio = document.querySelector(`input[name="colorEvento"][value="${data.colorEvento}"]`);
+        if (colorRadio) colorRadio.checked = true;
+    }
+    if (data.asistencia) {
+        const asistRadio = document.querySelector(`input[name="asistencia"][value="${data.asistencia}"]`);
+        if (asistRadio) { asistRadio.checked = true; toggleAcompaniantes(); }
+    }
+    const cant = document.getElementById('cant-acompaniantes');
+    const noms = document.getElementById('nombres-acompaniantes');
+    if (cant) cant.value = data.cantAcompaniantes || '';
+    if (noms) noms.value = data.nombresAcompaniantes || '';
+
+    // Paso 2: Descargos
     const descargo = document.getElementById('descargo-text');
     const gratitud = document.getElementById('gratitud-text');
     if (descargo) descargo.value = data.descargo || '';
@@ -339,17 +363,21 @@ function populateActorDropdowns() {
 let maxAllowedStep = 0;
 
 function goToStep(stepIndex) {
-    // Paso 6 = Cambiar Datos: lógica especial
+    // Paso 6 = Personajes: re-renderizar siempre al entrar
     if (stepIndex === 6) {
+        initPersonajesPage();
+    }
+    // Paso 7 = Cambiar Votación: lógica especial
+    if (stepIndex === 7) {
         renderCambiarDatosPage();
     }
 
-    // Páginas válidas: 0-6
-    if (stepIndex < 0 || stepIndex > 6) return;
+    // Páginas válidas: 0-7
+    if (stepIndex < 0 || stepIndex > 7) return;
 
-    // Bloqueo wizard: no saltar pasos no desbloqueados (solo aplica a pasos 1-4)
+    // Bloqueo wizard: no saltar pasos no desbloqueados (solo aplica a pasos 1-5)
     const isAdmin = loggedUser && loggedUser.isAdmin;
-    if (!isAdmin && stepIndex >= 1 && stepIndex <= 4 && stepIndex > maxAllowedStep) return;
+    if (!isAdmin && stepIndex >= 1 && stepIndex <= 5 && stepIndex > maxAllowedStep) return;
 
     // Mostrar la página activa (pages 0-6 en orden en el DOM)
     document.querySelectorAll('.wizard-page').forEach((page, idx) => {
@@ -383,20 +411,35 @@ function unlockNextStep(nextStep) {
 
 // Valida campos del paso actual antes de avanzar
 function validateAndNext(currentPage) {
-    const errorId = `step${currentPage}-error`;
-    const errorEl = document.getElementById(errorId);
+    const errorEl = document.getElementById(`step${currentPage}-error`)
+                 || document.getElementById(`step${currentPage}-descargo-error`)
+                 || document.getElementById(`step${currentPage}b-error`);
     const missing = [];
 
     if (currentPage === 1) {
-        // Paso 1: Descargos y Gratitud
+        // Paso 1: Color y Asistencia
+        const color = document.querySelector('input[name="colorEvento"]:checked');
+        const asist = document.querySelector('input[name="asistencia"]:checked');
+        if (!color) missing.push('Color representativo');
+        if (!asist) missing.push('Tipo de asistencia (Solo/a o Acompañado/a)');
+        if (asist && asist.value === 'ACOMPAÑADO') {
+            const cant = document.getElementById('cant-acompaniantes');
+            const noms = document.getElementById('nombres-acompaniantes');
+            if (!cant || !cant.value || parseInt(cant.value) < 1) missing.push('Cantidad de acompañantes');
+            if (!noms || !noms.value.trim()) missing.push('Nombres de los acompañantes');
+        }
+    }
+
+    if (currentPage === 2) {
+        // Paso 2: Descargos y Gratitud
         const descargo = document.getElementById('descargo-text');
         const gratitud = document.getElementById('gratitud-text');
         if (!descargo || !descargo.value.trim()) missing.push('Descargos');
         if (!gratitud || !gratitud.value.trim()) missing.push('Gratitud');
     }
 
-    if (currentPage === 2) {
-        // Paso 2: Ternas 1-9 (voto1 y voto2) + Terna 10
+    if (currentPage === 3) {
+        // Paso 3: Ternas 1-9 (voto1 y voto2) + Terna 10
         for (let i = 1; i <= 9; i++) {
             const v1 = document.querySelector(`select[name="terna${i}_voto1"]`);
             const v2 = document.querySelector(`select[name="terna${i}_voto2"]`);
@@ -407,13 +450,13 @@ function validateAndNext(currentPage) {
         if (!t10 || !t10.value.trim()) missing.push('Terna 10 — Mejor momento');
     }
 
-    if (currentPage === 3) {
-        // Paso 3: Gustos Culturales
+    if (currentPage === 4) {
+        // Paso 4: Gustos Culturales
         const fields = [
-            { id: 'fav-movies',   label: 'Películas favoritas' },
-            { id: 'fav-actors',   label: 'Actores/Actrices favoritos' },
+            { id: 'fav-movies',    label: 'Películas favoritas' },
+            { id: 'fav-actors',    label: 'Actores/Actrices favoritos' },
             { id: 'fav-paintings', label: 'Cuadros / Arte favorito' },
-            { id: 'fav-music',   label: 'Música para el baile' },
+            { id: 'fav-music',     label: 'Música para el baile' },
         ];
         fields.forEach(f => {
             const el = document.getElementById(f.id);
@@ -422,27 +465,43 @@ function validateAndNext(currentPage) {
     }
 
     if (missing.length > 0) {
-        if (errorEl) {
-            errorEl.style.display = 'block';
-            errorEl.innerHTML = `⚠️ Completá los siguientes campos antes de continuar:<br>
+        const errTarget = document.getElementById('step' + currentPage + '-error')
+                       || document.getElementById('step' + currentPage + '-descargo-error')
+                       || document.getElementById('step' + currentPage + 'b-error');
+        if (errTarget) {
+            errTarget.style.display = 'block';
+            errTarget.innerHTML = `⚠️ Completá los siguientes campos antes de continuar:<br>
                 <ul>${missing.map(m => `<li>${m}</li>`).join('')}</ul>`;
-            errorEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            errTarget.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
-        return; // no avanza
+        return;
     }
 
-    // Sin errores: ocultar mensaje y avanzar
     if (errorEl) errorEl.style.display = 'none';
     unlockNextStep(currentPage + 1);
+}
+
+// Muestra/oculta los campos de acompañantes según la elección de asistencia
+function toggleAcompaniantes() {
+    const asist = document.querySelector('input[name="asistencia"]:checked');
+    const fields = document.getElementById('acompaniantes-fields');
+    const soloCard  = document.getElementById('asist-solo-card');
+    const acompCard = document.getElementById('asist-acomp-card');
+    if (!fields) return;
+    const isAcomp = asist && asist.value === 'ACOMPAÑADO';
+    fields.style.display = isAcomp ? 'block' : 'none';
+    if (soloCard)  soloCard.classList.toggle('asistencia-selected',  !isAcomp && asist);
+    if (acompCard) acompCard.classList.toggle('asistencia-selected', isAcomp);
 }
 
 function initWizardNavigation() {
     // Nav superior: solo navega si el paso está desbloqueado (o es admin)
     document.querySelectorAll('.nav-tab-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-            const step = parseInt(btn.getAttribute('data-step'), 10);
-            const isAdmin = loggedUser && loggedUser.isAdmin;
-            if (isAdmin || step <= maxAllowedStep) {
+            const step      = parseInt(btn.getAttribute('data-step'), 10);
+            const isAdmin   = loggedUser && loggedUser.isAdmin;
+            const isSiteOnly = btn.classList.contains('site-only-btn');
+            if (isAdmin || isSiteOnly || step <= maxAllowedStep) {
                 goToStep(step);
             }
         });
@@ -488,13 +547,55 @@ function initGuestForm() {
             return;
         }
 
+        const asistenciaVal = formData.get('asistencia') || '';
+        const cantAcomp     = parseInt(formData.get('cantAcompaniantes') || '0', 10) || 0;
+        const nombresRaw    = (formData.get('nombresAcompaniantes') || '').trim();
+
+        // ── Asignación balanceada de colores a acompañantes ──────────────────────
+        // Cuenta colores actuales en todos los registros (titular + acompañantes)
+        // y asigna el color menos usado a cada acompañante nuevo.
+        const COLORS = ['ROJO', 'AMARILLO', 'VERDE'];
+        function assignBalancedColors(numCompanions, nombresTexto) {
+            if (numCompanions === 0) return [];
+            const allData = getStoredData();
+            const counts  = { ROJO: 0, AMARILLO: 0, VERDE: 0 };
+            allData.forEach(item => {
+                if (item.colorEvento && counts[item.colorEvento] !== undefined) counts[item.colorEvento]++;
+                if (Array.isArray(item.coloresAcompaniantes)) {
+                    item.coloresAcompaniantes.forEach(ac => {
+                        if (ac.color && counts[ac.color] !== undefined) counts[ac.color]++;
+                    });
+                }
+            });
+            const nombres = nombresTexto.split(',').map(s => s.trim()).filter(Boolean);
+            const result  = [];
+            for (let i = 0; i < numCompanions; i++) {
+                // Elige el color con menor conteo actual
+                const chosen = COLORS.reduce((a, b) => counts[a] <= counts[b] ? a : b);
+                counts[chosen]++;
+                result.push({ nombre: nombres[i] || `Acompañante ${i + 1}`, color: chosen });
+            }
+            return result;
+        }
+
+        const coloresAcompaniantes = asistenciaVal === 'ACOMPAÑADO'
+            ? assignBalancedColors(cantAcomp, nombresRaw)
+            : [];
+
         const newEntry = {
             id: 'resp_' + Date.now(),
             timestamp: new Date().toLocaleString(),
             guestName: loggedUser ? loggedUser.name : 'Invitado',
             confirmGift: 'Sí',
 
-            // Descargos y Gratitud (Paso 1)
+            // Color y Asistencia (Paso 1)
+            colorEvento:           formData.get('colorEvento') || '',
+            asistencia:            asistenciaVal,
+            cantAcompaniantes:     cantAcomp || '',
+            nombresAcompaniantes:  nombresRaw,
+            coloresAcompaniantes:  coloresAcompaniantes,
+
+            // Descargos y Gratitud (Paso 2)
             descargo: formData.get('descargo').trim(),
             gratitud: formData.get('gratitud').trim(),
 
@@ -536,15 +637,26 @@ function initGuestForm() {
             favMusic: formData.get('favMusic').trim()
         };
 
-        // Calcular editCount: primer envío = 1, re-envíos = incrementar
+        // ── Contadores separados: editCount (votación) y editCountAsistencia ───
+        // editCount      : sube en CADA envío (abarca todo el formulario)
+        // editCountAsistencia: sube solo si la asistencia/acompañantes cambiaron
         const data = getStoredData();
         const existingIndex = data.findIndex(d => d.guestName === newEntry.guestName);
         if (existingIndex !== -1) {
-            const prevCount = data[existingIndex].editCount || 0;
-            newEntry.editCount = prevCount + 1;
-            data[existingIndex] = newEntry; // reemplaza
+            const prev = data[existingIndex];
+            newEntry.editCount = (prev.editCount || 0) + 1;
+
+            // Solo incrementa si cambia color, asistencia, cantidad o nombres
+            const asistCambia = (prev.colorEvento    !== newEntry.colorEvento)    ||
+                                 (prev.asistencia      !== newEntry.asistencia)     ||
+                                 (prev.cantAcompaniantes !== String(newEntry.cantAcompaniantes)) ||
+                                 (prev.nombresAcompaniantes !== newEntry.nombresAcompaniantes);
+            newEntry.editCountAsistencia = (prev.editCountAsistencia || 0) + (asistCambia ? 1 : 0);
+
+            data[existingIndex] = newEntry;
         } else {
-            newEntry.editCount = 1;         // primera vez
+            newEntry.editCount            = 1;
+            newEntry.editCountAsistencia  = 1;
             data.unshift(newEntry);
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -552,15 +664,17 @@ function initGuestForm() {
         // Descargar JSON individual (nombre fijo por usuario → reemplazable en repositorio2)
         downloadResponseJSON(newEntry);
 
-        // Mostrar Modal de éxito con info de cambios restantes
+        // Mostrar Modal de éxito con info de cambios restantes (votación)
         const remaining = MAX_EDITS - newEntry.editCount;
+        const remAsist  = MAX_EDITS_ASIST - (newEntry.editCountAsistencia || 0);
         const modalP = document.querySelector('#success-modal .modal-content p:first-of-type');
         if (modalP && remaining > 0) {
             modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
-                <small style="color:var(--text-muted);">Podés modificarlos hasta ${remaining} vez${remaining !== 1 ? 'es' : ''} más.</small>`;
+                <small style="color:var(--text-muted);">Podés modificar tu votación hasta ${remaining} vez${remaining !== 1 ? 'es' : ''} más
+                · Asistencia hasta ${Math.max(0,remAsist)} vez${remAsist !== 1 ? 'es' : ''} más.</small>`;
         } else if (modalP && remaining <= 0) {
             modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
-                <small style="color:#f87171;">🔒 Alcanzaste el límite de cambios. Ya no podrás modificar tus datos.</small>`;
+                <small style="color:#f87171;">🔒 Alcanzaste el límite de cambios de votación.</small>`;
         }
 
         successModal.classList.add('active');
@@ -573,13 +687,16 @@ function resetWizardAndCloseModal() {
     document.getElementById('wrap-survey-form').reset();
     populateActorDropdowns();
 
-    maxAllowedStep = 4;
+    maxAllowedStep = 5;
     userHasCompleted = true;
+
+    // Ocultar el botón de inicio una vez que el usuario envió sus datos
+    const heroStartBtn = document.getElementById('btn-hero-start');
+    if (heroStartBtn) heroStartBtn.style.display = 'none';
 
     if (loggedUser && !loggedUser.isAdmin) {
         document.getElementById('main-nav').style.display = 'flex';
         document.getElementById('timeline-section').style.display = 'block';
-        // Cambiar al nav de site: ocultar tabs del wizard, mostrar Personajes + Cambiar Datos
         setNavMode('site');
         initPersonajesPage();
     }
@@ -1143,8 +1260,8 @@ function ternaWizardNext() {
     if (currentTernaStep < 10) {
         showTernaStep(currentTernaStep + 1);
     } else {
-        // Terminó todas las ternas → avanzar al paso 3
-        unlockNextStep(3);
+        // Terminó todas las ternas → avanzar al paso 4 (Cultura)
+        unlockNextStep(4);
     }
 }
 
@@ -1156,9 +1273,10 @@ function ternaWizardPrev() {
 // 5. PANEL DE CONTROL DE PRODUCCIÓN (ACCESO DIRECTO PARA OMAR)
 // ----------------------------------------------------------
 function initAdminModal() {
-    const btnOpenAdmin = document.getElementById('btn-open-admin-modal');
-    const adminPanelModal = document.getElementById('admin-panel-modal');
-    const btnCloseAdmin = document.getElementById('btn-close-admin');
+    const btnOpenAdmin      = document.getElementById('btn-open-admin-modal');
+    const adminPanelModal   = document.getElementById('admin-panel-modal');
+    const btnCloseAdmin     = document.getElementById('btn-close-admin');
+    const btnSaveCloseAdmin = document.getElementById('btn-save-close-admin');
 
     btnOpenAdmin.addEventListener('click', () => {
         renderAdminPanel();
@@ -1168,6 +1286,56 @@ function initAdminModal() {
     btnCloseAdmin.addEventListener('click', () => {
         adminPanelModal.classList.remove('active');
     });
+
+    // 💾 Guardar y Cerrar: exporta un backup JSON de todos los datos y cierra el modal
+    if (btnSaveCloseAdmin) {
+        btnSaveCloseAdmin.addEventListener('click', async () => {
+            const data = getStoredData();
+            if (data.length === 0) {
+                alert('No hay datos para exportar.');
+                adminPanelModal.classList.remove('active');
+                return;
+            }
+            if (!confirm(`¿Guardar backup de ${data.length} respuesta${data.length !== 1 ? 's' : ''} y cerrar el panel?`)) return;
+
+            // Exportar backup JSON completo
+            const filename = `prod1g0_backup_${new Date().toISOString().slice(0,10)}.json`;
+            const content  = JSON.stringify(data, null, 2);
+
+            if ('showDirectoryPicker' in window) {
+                try {
+                    let dirHandle = window._repo2DirHandle || null;
+                    if (!dirHandle) {
+                        dirHandle = await window.showDirectoryPicker({ id: 'prodigo-repo2', mode: 'readwrite', startIn: 'downloads' });
+                        window._repo2DirHandle = dirHandle;
+                    }
+                    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
+                    const writable   = await fileHandle.createWritable();
+                    await writable.write(content);
+                    await writable.close();
+                } catch (err) {
+                    // fallback silencioso
+                    const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
+                    const url  = URL.createObjectURL(blob);
+                    const a    = document.createElement('a');
+                    a.href = url; a.download = filename;
+                    document.body.appendChild(a); a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                }
+            } else {
+                const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
+                const url  = URL.createObjectURL(blob);
+                const a    = document.createElement('a');
+                a.href = url; a.download = filename;
+                document.body.appendChild(a); a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }
+
+            adminPanelModal.classList.remove('active');
+        });
+    }
 }
 
 function initAdminTabs() {
@@ -1248,6 +1416,9 @@ function renderAdminPanel() {
     // Acordeón Tabla completa
     renderFullTable(data);
 
+    // Acordeón Asistencia & Colores
+    renderAsistenciaColoresTabla(data);
+
     // Acordeón Itinerario
     renderItinerarioAdminList();
 
@@ -1296,6 +1467,9 @@ function renderFotosAdminGrid() {
         // Usamos data-name para evitar problemas con comillas en nombres como Victor Fusco
         cell.dataset.name = name;
 
+        const desc    = escapeHTML(pdata.descripcion || '');
+        const funfact = escapeHTML(pdata.fun_fact || '');
+
         cell.innerHTML = `
             <div class="foto-admin-preview" id="prev-${sfn}">
                 ${stored
@@ -1303,12 +1477,30 @@ function renderFotosAdminGrid() {
                     : `<span class="foto-admin-emoji" style="color:${color}">${emoji}</span>`}
             </div>
 
-            <div class="foto-edit-fields">
-                <label class="foto-edit-label">Nombre real</label>
-                <input class="foto-edit-input" id="edit-nombre-${sfn}" type="text" value="${escapeHTML(nombreReal)}" placeholder="Nombre real">
-                <label class="foto-edit-label" style="margin-top:.4rem;">Personaje</label>
-                <input class="foto-edit-input" id="edit-personaje-${sfn}" type="text" value="${escapeHTML(personaje)}" placeholder="Nombre del personaje">
-                <button type="button" class="foto-save-btn foto-save-personaje">💾 Guardar</button>
+            <div class="foto-edit-fields foto-edit-fields-full">
+                <div class="foto-edit-row2">
+                    <div class="foto-edit-col">
+                        <label class="foto-edit-label">Nombre real</label>
+                        <input class="foto-edit-input" id="edit-nombre-${sfn}" type="text" value="${escapeHTML(nombreReal)}" placeholder="Nombre real">
+                    </div>
+                    <div class="foto-edit-col">
+                        <label class="foto-edit-label">Personaje</label>
+                        <input class="foto-edit-input" id="edit-personaje-${sfn}" type="text" value="${escapeHTML(personaje)}" placeholder="Personaje">
+                    </div>
+                    <div class="foto-edit-col foto-edit-col-sm">
+                        <label class="foto-edit-label">Emoji</label>
+                        <input class="foto-edit-input" id="edit-emoji-${sfn}" type="text" value="${escapeHTML(emoji)}" placeholder="🎭" maxlength="4">
+                    </div>
+                    <div class="foto-edit-col foto-edit-col-sm">
+                        <label class="foto-edit-label">Color</label>
+                        <input class="foto-edit-input foto-edit-color" id="edit-color-${sfn}" type="color" value="${color}">
+                    </div>
+                </div>
+                <label class="foto-edit-label" style="margin-top:.5rem;">Descripción</label>
+                <textarea class="foto-edit-input" id="edit-desc-${sfn}" rows="2" placeholder="Descripción del personaje...">${desc}</textarea>
+                <label class="foto-edit-label" style="margin-top:.4rem;">Fun fact 🎬</label>
+                <textarea class="foto-edit-input" id="edit-funfact-${sfn}" rows="2" placeholder="Dato curioso o anécdota...">${funfact}</textarea>
+                <button type="button" class="foto-save-btn foto-save-personaje" style="margin-top:.6rem;">💾 Guardar cambios</button>
             </div>
 
             <div class="foto-admin-btns" style="margin-top:.5rem;">
@@ -1397,19 +1589,44 @@ function renderIntentosTable(data) {
         return;
     }
     let rows = data.map(item => {
-        const used      = item.editCount || 1;
-        const remaining = Math.max(0, MAX_EDITS - used);
-        const locked    = remaining === 0;
-        const pct       = Math.round((used / MAX_EDITS) * 100);
+        // Votación
+        const usedV      = item.editCount || 1;
+        const remV       = Math.max(0, MAX_EDITS - usedV);
+        const lockedV    = remV === 0;
+        const pctV       = Math.round((usedV / MAX_EDITS) * 100);
+
+        // Asistencia
+        const usedA   = item.editCountAsistencia != null ? item.editCountAsistencia : 1;
+        const remA    = Math.max(0, MAX_EDITS_ASIST - usedA);
+        const lockedA = remA === 0;
+        const pctA    = Math.round((usedA / MAX_EDITS_ASIST) * 100);
+
         return `
             <div class="intentos-row">
                 <div class="intentos-name">${escapeHTML(item.guestName)}</div>
-                <div class="intentos-bar-wrap">
-                    <div class="intentos-bar" style="width:${pct}%;background:${locked ? '#f87171' : 'var(--gold-primary)'}"></div>
+                <div style="display:flex;flex-direction:column;gap:.35rem;flex:1;">
+                    <div>
+                        <small style="color:var(--text-muted);">🗳️ Votación</small>
+                        <div class="intentos-bar-wrap">
+                            <div class="intentos-bar" style="width:${pctV}%;background:${lockedV ? '#f87171' : 'var(--gold-primary)'}"></div>
+                        </div>
+                    </div>
+                    <div>
+                        <small style="color:var(--text-muted);">🎨 Asistencia</small>
+                        <div class="intentos-bar-wrap">
+                            <div class="intentos-bar" style="width:${pctA}%;background:${lockedA ? '#f87171' : '#60a5fa'}"></div>
+                        </div>
+                    </div>
                 </div>
-                <div class="intentos-count ${locked ? 'intentos-locked' : ''}">
-                    ${locked ? '🔒 BLOQUEADO' : `${remaining} cambio${remaining !== 1 ? 's' : ''} restante${remaining !== 1 ? 's' : ''}`}
-                    <small>(${used}/${MAX_EDITS} usados)</small>
+                <div class="intentos-count">
+                    <div class="${lockedV ? 'intentos-locked' : ''}">
+                        ${lockedV ? '🔒 Votación bloqueada' : `🗳️ ${remV} cambio${remV !== 1 ? 's' : ''} de votación`}
+                        <small>(${usedV}/${MAX_EDITS})</small>
+                    </div>
+                    <div class="${lockedA ? 'intentos-locked' : ''}" style="margin-top:.2rem;">
+                        ${lockedA ? '🔒 Asistencia bloqueada' : `🎨 ${remA} cambio${remA !== 1 ? 's' : ''} de asistencia`}
+                        <small>(${usedA}/${MAX_EDITS_ASIST})</small>
+                    </div>
                 </div>
             </div>`;
     }).join('');
@@ -1574,15 +1791,32 @@ function renderFullTable(data) {
     const tbody = document.getElementById('full-admin-tbody');
     tbody.innerHTML = '';
 
+    // Actualizar encabezados para incluir los nuevos campos
+    const thead = document.querySelector('#full-admin-table thead tr');
+    if (thead) {
+        thead.innerHTML = `
+            <th>Fecha</th><th>Invitado</th><th>Cambios</th>
+            <th>Color</th><th>Asistencia</th><th>Acomp.</th>
+            <th>Regalo</th><th>Descargo</th><th>Gratitud</th>
+            <th>Películas</th><th>Música</th>
+        `;
+    }
+
     if (data.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:2rem;color:var(--text-muted);">No hay registros aún.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:2rem;color:var(--text-muted);">No hay registros aún.</td></tr>`;
         return;
     }
+
+    const colorEmoji = { 'ROJO': '🔴', 'AMARILLO': '🟡', 'VERDE': '🟢' };
 
     data.forEach(item => {
         const ch  = item.editCount || 1;
         const rem = Math.max(0, MAX_EDITS - ch);
         const tr  = document.createElement('tr');
+        const cEmoji = colorEmoji[item.colorEvento] || '';
+        const asistLabel = item.asistencia === 'ACOMPAÑADO'
+            ? `👥 Acomp. (${item.cantAcompaniantes || '?'})`
+            : item.asistencia === 'SOLO' ? '🧍 Solo/a' : '—';
         tr.innerHTML = `
             <td><small>${escapeHTML(item.timestamp)}</small></td>
             <td><strong>${escapeHTML(item.guestName)}</strong></td>
@@ -1591,6 +1825,9 @@ function renderFullTable(data) {
                     ${rem === 0 ? '🔒' : ch + '/' + MAX_EDITS}
                 </span>
             </td>
+            <td style="text-align:center;">${cEmoji} <small>${escapeHTML(item.colorEvento || '—')}</small></td>
+            <td><small>${escapeHTML(asistLabel)}</small></td>
+            <td><small style="font-size:.75rem;color:var(--text-muted)">${escapeHTML(item.nombresAcompaniantes || '—')}</small></td>
             <td><span style="color:${item.confirmGift === 'Sí' ? '#34d399' : '#f87171'}">${item.confirmGift === 'Sí' ? '🎁 Sí' : 'No'}</span></td>
             <td><small>${escapeHTML(item.descargo ? item.descargo.substring(0, 40) + '...' : '-')}</small></td>
             <td><small>${escapeHTML(item.gratitud ? item.gratitud.substring(0, 40) + '...' : '-')}</small></td>
@@ -1600,6 +1837,99 @@ function renderFullTable(data) {
         tbody.appendChild(tr);
     });
 }
+
+// ----------------------------------------------------------
+// ASISTENCIA & COLORES — Tabla de invitados con colores asignados
+// ----------------------------------------------------------
+function renderAsistenciaColoresTabla(data) {
+    const container = document.getElementById('asistencia-colores-tabla');
+    if (!container) return;
+
+    if (data.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin datos aún.</p>';
+        return;
+    }
+
+    const colorEmoji = { ROJO: '🔴', AMARILLO: '🟡', VERDE: '🟢' };
+    const colorBg    = { ROJO: '#fee2e2', AMARILLO: '#fef9c3', VERDE: '#dcfce7' };
+    const colorBdr   = { ROJO: '#f87171', AMARILLO: '#facc15', VERDE: '#4ade80' };
+
+    // Conteo global de colores (titulares + acompañantes)
+    const totals = { ROJO: 0, AMARILLO: 0, VERDE: 0 };
+    data.forEach(item => {
+        if (totals[item.colorEvento] !== undefined) totals[item.colorEvento]++;
+        if (Array.isArray(item.coloresAcompaniantes)) {
+            item.coloresAcompaniantes.forEach(ac => {
+                if (totals[ac.color] !== undefined) totals[ac.color]++;
+            });
+        }
+    });
+
+    // Resumen de totales
+    let html = `
+        <div class="ac-totals">
+            ${['ROJO','AMARILLO','VERDE'].map(c => `
+                <div class="ac-total-pill" style="background:${colorBg[c]};border:1px solid ${colorBdr[c]};">
+                    <span style="font-size:1.3rem;">${colorEmoji[c]}</span>
+                    <span style="font-weight:700;">${c}</span>
+                    <span class="ac-total-num">${totals[c]}</span>
+                </div>`).join('')}
+        </div>
+        <div class="ac-table-wrap">
+            <table class="data-table ac-table">
+                <thead>
+                    <tr>
+                        <th>Invitado</th>
+                        <th>Color</th>
+                        <th>Asistencia</th>
+                        <th>Acompañantes y colores</th>
+                        <th>Cambios asist.</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+    data.forEach(item => {
+        const cE   = colorEmoji[item.colorEvento] || '—';
+        const asistLabel = item.asistencia === 'ACOMPAÑADO'
+            ? `👥 Acompañado (${item.cantAcompaniantes || '?'})`
+            : item.asistencia === 'SOLO' ? '🧍 Solo/a' : '—';
+
+        // Acompañantes con colores asignados
+        let acompHtml = '—';
+        if (Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0) {
+            acompHtml = item.coloresAcompaniantes.map(ac =>
+                `<span class="ac-companion-pill" style="background:${colorBg[ac.color]};border:1px solid ${colorBdr[ac.color]};">
+                    ${colorEmoji[ac.color]} ${escapeHTML(ac.nombre)}
+                </span>`
+            ).join(' ');
+        } else if (item.nombresAcompaniantes) {
+            acompHtml = `<span style="color:var(--text-muted);font-size:.8rem;">${escapeHTML(item.nombresAcompaniantes)} <em>(sin color asignado aún)</em></span>`;
+        }
+
+        const usedAsist = item.editCountAsistencia || (item.editCount ? 1 : 0);
+        const remAsist  = Math.max(0, MAX_EDITS_ASIST - usedAsist);
+        const lockAsist = remAsist === 0;
+
+        html += `
+            <tr>
+                <td><strong>${escapeHTML(item.guestName)}</strong></td>
+                <td style="text-align:center;font-size:1.2rem;">${cE} <small>${escapeHTML(item.colorEvento || '—')}</small></td>
+                <td><small>${escapeHTML(asistLabel)}</small></td>
+                <td class="ac-companions-cell">${acompHtml}</td>
+                <td style="text-align:center;">
+                    <span style="color:${lockAsist ? '#f87171' : 'var(--gold-primary)'};">
+                        ${lockAsist ? '🔒 BLOQUEADO' : `${remAsist} restante${remAsist !== 1 ? 's' : ''}`}
+                    </span>
+                    <small style="color:var(--text-muted);display:block;">(${usedAsist}/${MAX_EDITS_ASIST})</small>
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+}
+
+
 
 // ----------------------------------------------------------
 // 7. EXPORTACIONES Y HERRAMIENTAS
@@ -1843,8 +2173,12 @@ function getPersonajeData(name) {
 
 function guardarEdicionPersonaje(name, sfn, btn) {
     const useSfn = sfn || safeFileName(name);
-    const nombreInput    = document.getElementById('edit-nombre-' + useSfn);
+    const nombreInput    = document.getElementById('edit-nombre-'    + useSfn);
     const personajeInput = document.getElementById('edit-personaje-' + useSfn);
+    const emojiInput     = document.getElementById('edit-emoji-'     + useSfn);
+    const colorInput     = document.getElementById('edit-color-'     + useSfn);
+    const descInput      = document.getElementById('edit-desc-'      + useSfn);
+    const funfactInput   = document.getElementById('edit-funfact-'   + useSfn);
     if (!nombreInput || !personajeInput) return;
 
     const nuevoNombre    = nombreInput.value.trim();
@@ -1858,12 +2192,15 @@ function guardarEdicionPersonaje(name, sfn, btn) {
     const current = getPersonajeData(name);
     localStorage.setItem(overrideKey, JSON.stringify({
         ...current,
-        nombre:    nuevoNombre,
-        personaje: nuevoPersonaje
+        nombre:      nuevoNombre,
+        personaje:   nuevoPersonaje,
+        emoji:       emojiInput   ? emojiInput.value.trim()   : current.emoji,
+        color:       colorInput   ? colorInput.value          : current.color,
+        descripcion: descInput    ? descInput.value.trim()    : current.descripcion,
+        fun_fact:    funfactInput ? funfactInput.value.trim()  : current.fun_fact,
     }));
 
-    // Feedback visual en el botón
-    if (btn) { btn.textContent = '✅ Guardado'; setTimeout(() => { btn.textContent = '💾 Guardar'; }, 1800); }
+    if (btn) { btn.textContent = '✅ Guardado'; setTimeout(() => { btn.textContent = '💾 Guardar cambios'; }, 1800); }
 
     initPersonajesPage();
 }

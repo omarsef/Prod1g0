@@ -78,13 +78,14 @@
             <!-- NAV MODO WIZARD (solo durante la carga inicial) -->
             <nav id="main-nav" class="nav" style="display: none;">
                 <button class="nav-tab-btn active" data-step="0">🎬 Inicio</button>
-                <button class="nav-tab-btn wizard-only-btn" data-step="1">1. Descargos & Gratitud</button>
-                <button class="nav-tab-btn wizard-only-btn" data-step="2">2. Encuesta Ternas</button>
-                <button class="nav-tab-btn wizard-only-btn" data-step="3">3. Cultura & Música</button>
-                <button class="nav-tab-btn wizard-only-btn" data-step="4">🎁 Confirmación</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="1">🎨 Color & Asistencia</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="2">1. Descargos & Gratitud</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="3">2. Encuesta Ternas</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="4">3. Cultura & Música</button>
+                <button class="nav-tab-btn wizard-only-btn" data-step="5">🎁 Confirmación</button>
                 <!-- NAV MODO SITE (visible solo tras completar) -->
-                <button class="nav-tab-btn site-only-btn" data-step="5" style="display:none;">🎭 Personajes</button>
-                <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🔄 Cambiar Votación</button>
+                <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🎭 Personajes</button>
+                <button class="nav-tab-btn site-only-btn" data-step="7" style="display:none;">🔄 Cambiar Votación</button>
                 <button id="btn-open-admin-modal" class="btn-admin-nav" style="display: none;">🔒 Panel Producción</button>
             </nav>
         </header>
@@ -102,21 +103,26 @@
                 </div>
                 <div class="wizard-line"></div>
                 <div class="wizard-step-indicator" data-step-target="1">
+                    <span class="step-circle">🎨</span>
+                    <span class="step-label">Color</span>
+                </div>
+                <div class="wizard-line"></div>
+                <div class="wizard-step-indicator" data-step-target="2">
                     <span class="step-circle">1</span>
                     <span class="step-label">Descargos</span>
                 </div>
                 <div class="wizard-line"></div>
-                <div class="wizard-step-indicator" data-step-target="2">
+                <div class="wizard-step-indicator" data-step-target="3">
                     <span class="step-circle">2</span>
                     <span class="step-label">Ternas</span>
                 </div>
                 <div class="wizard-line"></div>
-                <div class="wizard-step-indicator" data-step-target="3">
+                <div class="wizard-step-indicator" data-step-target="4">
                     <span class="step-circle">3</span>
                     <span class="step-label">Cultura</span>
                 </div>
                 <div class="wizard-line"></div>
-                <div class="wizard-step-indicator" data-step-target="4">
+                <div class="wizard-step-indicator" data-step-target="5">
                     <span class="step-circle">🎁</span>
                     <span class="step-label">Final</span>
                 </div>
@@ -177,8 +183,8 @@
                             <p class="hero-subtitle-side">
                                 Tu información es confidencial y será el motor de los momentos más divertidos y emotivos de la noche.
                             </p>
-                            <button type="button" class="wizard-next-btn hero-start-btn" onclick="unlockNextStep(1)">
-                                🎬 COMENZAR A INGRESAR MIS DATOS ➔
+                            <button type="button" id="btn-hero-start" class="wizard-next-btn hero-start-btn" onclick="unlockNextStep(1)">
+                                🎨 ELEGIR MI COLOR Y COMENZAR ➔
                             </button>
                         </div>
                     </div>
@@ -260,11 +266,86 @@
 
 
                 <!-- ==========================================================
-                     PÁGINA 1: APARTADO 1 - DESCARGOS Y GRATITUD (PRIMER PASO POST-LOGIN)
+                     PÁGINA 1: COLOR REPRESENTATIVO & ASISTENCIA
                      ========================================================== -->
                 <div class="wizard-page" id="page-1">
                     <div class="page-header-block">
-                        <span class="badge">PRIMER APARTADO</span>
+                        <span class="badge badge-gold">PRIMER PASO</span>
+                        <h2 class="section-title"><span>🎨</span> TU COLOR Y ASISTENCIA</h2>
+                        <p class="section-desc">
+                            Elegí tu color representativo para la noche e informanos cómo venís al evento.
+                        </p>
+                    </div>
+
+                    <!-- Elección de color -->
+                    <div class="color-choice-section">
+                        <h3 class="color-choice-title">¿Cuál es tu color para la fiesta? *</h3>
+                        <p class="color-choice-desc">Este color te identificará durante toda la noche del evento.</p>
+                        <div class="color-choice-grid">
+                            <label class="color-choice-card color-rojo">
+                                <input type="radio" name="colorEvento" value="ROJO" required>
+                                <span class="color-choice-swatch">🔴</span>
+                                <span class="color-choice-name">ROJO</span>
+                            </label>
+                            <label class="color-choice-card color-amarillo">
+                                <input type="radio" name="colorEvento" value="AMARILLO" required>
+                                <span class="color-choice-swatch">🟡</span>
+                                <span class="color-choice-name">AMARILLO</span>
+                            </label>
+                            <label class="color-choice-card color-verde">
+                                <input type="radio" name="colorEvento" value="VERDE" required>
+                                <span class="color-choice-swatch">🟢</span>
+                                <span class="color-choice-name">VERDE</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <!-- Asistencia -->
+                    <div class="asistencia-section">
+                        <h3 class="asistencia-title">¿Cómo vas a venir al evento? *</h3>
+                        <div class="asistencia-opts">
+                            <label class="asistencia-card" id="asist-solo-card">
+                                <input type="radio" name="asistencia" value="SOLO" required onchange="toggleAcompaniantes()">
+                                <span class="asistencia-icon">🧍</span>
+                                <span class="asistencia-label">Solo/a</span>
+                            </label>
+                            <label class="asistencia-card" id="asist-acomp-card">
+                                <input type="radio" name="asistencia" value="ACOMPAÑADO" required onchange="toggleAcompaniantes()">
+                                <span class="asistencia-icon">👥</span>
+                                <span class="asistencia-label">Acompañado/a</span>
+                            </label>
+                        </div>
+
+                        <!-- Campos extra si elige acompañado -->
+                        <div id="acompaniantes-fields" class="acompaniantes-fields" style="display:none;">
+                            <div class="input-group" style="max-width:220px;">
+                                <label for="cant-acompaniantes">Cantidad de acompañantes *</label>
+                                <input type="number" id="cant-acompaniantes" name="cantAcompaniantes" min="1" max="10" placeholder="Ej: 2">
+                            </div>
+                            <div class="input-group">
+                                <label for="nombres-acompaniantes">Nombres de los acompañantes *</label>
+                                <textarea id="nombres-acompaniantes" name="nombresAcompaniantes" rows="3" placeholder="Ej: Ana García, Luis Torres..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="step1-error" class="step-error-msg" style="display:none;"></div>
+                    <div class="wizard-nav-btns">
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(0)">
+                            ⬅ Volver a Inicio
+                        </button>
+                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(1)">
+                            Siguiente: Descargos & Gratitud ➔
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ==========================================================
+                     PÁGINA 2: DESCARGOS Y GRATITUD
+                     ========================================================== -->
+                <div class="wizard-page" id="page-2">
+                    <div class="page-header-block">
+                        <span class="badge">SEGUNDO APARTADO</span>
                         <h2 class="section-title"><span>⚖️</span> DESCARGOS Y GRATITUD</h2>
                         <p class="section-desc">
                             Información confidencial para la dinámica del <strong>"Tribunal del Rodaje" (Actividad 2 de la fiesta)</strong>.<br>
@@ -292,25 +373,24 @@
                         </div>
                     </div>
 
-                    <div id="step1-error" class="step-error-msg" style="display:none;"></div>
+                    <div id="step2-descargo-error" class="step-error-msg" style="display:none;"></div>
                     <div class="wizard-nav-btns">
-                        <button type="button" class="wizard-prev-btn" onclick="goToStep(0)">
-                            ⬅ Volver a Inicio
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(1)">
+                            ⬅ Volver a Color & Asistencia
                         </button>
-                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(1)">
-                            Siguiente: 2. Encuesta de Ternas ➔
+                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(2)">
+                            Siguiente: Encuesta de Ternas ➔
                         </button>
                     </div>
                 </div>
 
 
                 <!-- ==========================================================
-                     PÁGINA 2: APARTADO 2 - ENCUESTA DE LAS 10 TERNAS
-                     Modo wizard (de a una) o modo scroll (edición con datos previos)
+                     PÁGINA 3: ENCUESTA DE LAS 10 TERNAS
                      ========================================================== -->
-                <div class="wizard-page" id="page-2">
+                <div class="wizard-page" id="page-3">
                     <div class="page-header-block">
-                        <span class="badge">SEGUNDO APARTADO</span>
+                        <span class="badge">TERCER APARTADO</span>
                         <h2 class="section-title"><span>🏆</span> ENCUESTA OFICIAL DE PREMIOS (10 TERNAS)</h2>
                         <p class="section-desc" id="ternas-mode-desc">
                             Selecciona a tus nominados de la lista desplegable. <br>
@@ -555,25 +635,25 @@
                         </div>
                     </div>
 
-                    <!-- Navegación del paso 2 (modo scroll / final del wizard de ternas) -->
+                    <!-- Navegación del paso 3 (modo scroll / final del wizard de ternas) -->
                     <div id="step2-nav" class="wizard-nav-btns">
                         <div id="step2-error" class="step-error-msg" style="display:none;"></div>
-                        <button type="button" class="wizard-prev-btn" onclick="goToStep(1)">
-                            ⬅ Volver a 1. Descargos
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(2)">
+                            ⬅ Volver a Descargos
                         </button>
-                        <button type="button" class="wizard-next-btn" id="btn-step2-next" onclick="validateAndNext(2)">
-                            Siguiente: 3. Cultura & Música ➔
+                        <button type="button" class="wizard-next-btn" id="btn-step2-next" onclick="validateAndNext(3)">
+                            Siguiente: Cultura & Música ➔
                         </button>
                     </div>
                 </div>
 
 
                 <!-- ==========================================================
-                     PÁGINA 3: APARTADO 3 - GUSTOS CULTURALES & MÚSICA (ACTIVIDAD 1 & BAILE)
+                     PÁGINA 4: GUSTOS CULTURALES & MÚSICA
                      ========================================================== -->
-                <div class="wizard-page" id="page-3">
+                <div class="wizard-page" id="page-4">
                     <div class="page-header-block">
-                        <span class="badge">TERCER APARTADO</span>
+                        <span class="badge">CUARTO APARTADO</span>
                         <h2 class="section-title"><span>🎨</span> GUSTOS CULTURALES & MÚSICA</h2>
                         <p class="section-desc">
                             Tus elecciones se utilizarán para armar la <strong>Actividad 1 (Juego de trivia e inspiraciones)</strong> y la <strong>playlist para las tandas de baile</strong>.
@@ -604,12 +684,12 @@
                         </div>
                     </div>
 
-                    <div id="step3-error" class="step-error-msg" style="display:none;"></div>
+                    <div id="step4-error" class="step-error-msg" style="display:none;"></div>
                     <div class="wizard-nav-btns">
-                        <button type="button" class="wizard-prev-btn" onclick="goToStep(2)">
-                            ⬅ Volver a 2. Ternas
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(3)">
+                            ⬅ Volver a Ternas
                         </button>
-                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(3)">
+                        <button type="button" class="wizard-next-btn" onclick="validateAndNext(4)">
                             Siguiente: Confirmar y Enviar ➔
                         </button>
                     </div>
@@ -617,9 +697,9 @@
 
 
                 <!-- ==========================================================
-                     PÁGINA 4: CONFIRMACIÓN DE REGALO ABSURDO Y ENVÍO
+                     PÁGINA 5: CONFIRMACIÓN DE REGALO ABSURDO Y ENVÍO
                      ========================================================== -->
-                <div class="wizard-page" id="page-4">
+                <div class="wizard-page" id="page-5">
                     <div class="page-header-block">
                         <span class="badge badge-gold">PASO FINAL</span>
                         <h2 class="section-title"><span>🎁</span> CONFIRMACIÓN Y ENVÍO A PRODUCCIÓN</h2>
@@ -654,17 +734,17 @@
                     </div>
 
                     <div class="wizard-nav-btns">
-                        <button type="button" class="wizard-prev-btn" onclick="goToStep(3)">
-                            ⬅ Volver a 3. Cultura & Música
+                        <button type="button" class="wizard-prev-btn" onclick="goToStep(4)">
+                            ⬅ Volver a Cultura & Música
                         </button>
                         <div></div>
                     </div>
                 </div>
 
                 <!-- ==========================================================
-                     PÁGINA 5: PERSONAJES
+                     PÁGINA 6: PERSONAJES
                      ========================================================== -->
-                <div class="wizard-page" id="page-5">
+                <div class="wizard-page" id="page-6">
                     <div class="page-header-block">
                         <span class="badge">ELENCO & EQUIPO</span>
                         <h2 class="section-title"><span>🎭</span> PERSONAJES DE PROD1G0</h2>
@@ -677,9 +757,9 @@
                 </div>
 
                 <!-- ==========================================================
-                     PÁGINA 6: CAMBIAR VOTACIÓN
+                     PÁGINA 7: CAMBIAR VOTACIÓN
                      ========================================================== -->
-                <div class="wizard-page" id="page-6">
+                <div class="wizard-page" id="page-7">
                     <div class="cambiar-datos-container">
                         <div class="cambiar-datos-card">
                             <div class="cambiar-datos-icon">🗳️</div>
@@ -719,7 +799,8 @@
                     <button id="btn-export-csv" class="btn-secondary">📥 CSV (Excel)</button>
                     <button id="btn-export-json" class="btn-secondary">💾 Backup JSON</button>
                     <button id="btn-load-demo" class="btn-secondary">🎲 Demo</button>
-                    <button id="btn-close-admin" class="btn-danger">Cerrar ✕</button>
+                    <button id="btn-save-close-admin" class="btn-save-close">💾 Guardar y Cerrar</button>
+                    <button id="btn-close-admin" class="btn-danger">Cerrar sin guardar ✕</button>
                 </div>
             </div>
 
@@ -837,7 +918,21 @@
                     </div>
                 </div>
 
-                <!-- SECCIÓN 5: GESTIÓN DE DATOS -->
+                <!-- SECCIÓN 5b: ASISTENCIA & COLORES -->
+                <div class="accord-section" id="accord-asistencia">
+                    <button class="accord-btn" onclick="toggleAccord('accord-asistencia')">
+                        <span class="accord-icon">🎨</span>
+                        <span class="accord-title">ASISTENCIA & COLORES — Invitados y asignaciones</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div id="asistencia-colores-tabla" class="asistencia-colores-tabla">
+                            <!-- generado por JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 6: GESTIÓN DE DATOS -->
                 <div class="accord-section accord-section-danger" id="accord-gestion">
                     <button class="accord-btn accord-btn-danger" onclick="toggleAccord('accord-gestion')">
                         <span class="accord-icon">🗑️</span>
