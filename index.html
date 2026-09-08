@@ -84,7 +84,7 @@
                 <button class="nav-tab-btn wizard-only-btn" data-step="4">🎁 Confirmación</button>
                 <!-- NAV MODO SITE (visible solo tras completar) -->
                 <button class="nav-tab-btn site-only-btn" data-step="5" style="display:none;">🎭 Personajes</button>
-                <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🔄 Cambiar Datos</button>
+                <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🔄 Cambiar Votación</button>
                 <button id="btn-open-admin-modal" class="btn-admin-nav" style="display: none;">🔒 Panel Producción</button>
             </nav>
         </header>
@@ -677,13 +677,13 @@
                 </div>
 
                 <!-- ==========================================================
-                     PÁGINA 6: CAMBIAR DATOS
+                     PÁGINA 6: CAMBIAR VOTACIÓN
                      ========================================================== -->
                 <div class="wizard-page" id="page-6">
                     <div class="cambiar-datos-container">
                         <div class="cambiar-datos-card">
-                            <div class="cambiar-datos-icon">🔄</div>
-                            <h2>¿Querés modificar tus datos?</h2>
+                            <div class="cambiar-datos-icon">🗳️</div>
+                            <h2>¿Querés modificar tu votación?</h2>
                             <p id="cambiar-datos-info" class="cambiar-datos-info"></p>
                             <div id="cambiar-datos-actions" class="cambiar-datos-actions"></div>
                         </div>
@@ -878,7 +878,84 @@
                     </div>
                 </div>
 
+                <!-- SECCIÓN 6: ITINERARIO — Edición de la noche -->
+                <div class="accord-section" id="accord-itinerario">
+                    <button class="accord-btn" onclick="toggleAccord('accord-itinerario')">
+                        <span class="accord-icon">🗓️</span>
+                        <span class="accord-title">ITINERARIO — Editar programa de la noche</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.2rem;">
+                            Editá los títulos y descripciones de cada momento del itinerario. Los cambios se guardan localmente y se reflejan en la página principal.
+                        </p>
+                        <div id="itinerario-admin-list" class="itinerario-admin-list">
+                            <!-- generado por JS -->
+                        </div>
+                        <button type="button" class="btn-add-user" style="margin-top:1rem;" onclick="agregarItemItinerario()">➕ Agregar ítem</button>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 7: ELENCO — Fotos, nombres y personajes -->
+                <div class="accord-section" id="accord-fotos">
+                    <button class="accord-btn" onclick="toggleAccord('accord-fotos')">
+                        <span class="accord-icon">🎭</span>
+                        <span class="accord-title">ELENCO — Fotos, Nombres y Personajes</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1.2rem;">
+                            Editá el nombre real, el nombre del personaje y subí una foto miniatura para cada integrante. Los cambios se reflejan en la página de Personajes.
+                        </p>
+                        <div class="fotos-admin-grid" id="fotos-admin-grid">
+                            <!-- generado por JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN 7: USUARIOS Y CLAVES -->
+                <div class="accord-section" id="accord-usuarios">
+                    <button class="accord-btn" onclick="toggleAccord('accord-usuarios')">
+                        <span class="accord-icon">🔑</span>
+                        <span class="accord-title">USUARIOS & CLAVES — Gestión de acceso</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div class="usuarios-toolbar">
+                            <button class="btn-add-user" onclick="abrirModalAgregarUsuario()">➕ Agregar usuario</button>
+                            <p style="color:var(--text-muted);font-size:.82rem;margin:0;">
+                                Clave por defecto del equipo: <code>0000</code> &nbsp;|&nbsp; Clave admin (Omar): <code>1111</code>
+                            </p>
+                        </div>
+                        <div id="usuarios-admin-list" class="usuarios-admin-list">
+                            <!-- generado por JS -->
+                        </div>
+                    </div>
+                </div>
+
             </div><!-- fin accordion -->
+        </div><!-- fin admin-panel-container -->
+    </div><!-- fin admin-panel-modal -->
+
+    <!-- MODAL: AGREGAR USUARIO -->
+    <div id="modal-agregar-usuario" class="modal">
+        <div class="modal-content modal-usuario-content">
+            <button class="modal-close-x" onclick="cerrarModalAgregarUsuario()">✕</button>
+            <div class="modal-icon">👤</div>
+            <h2>Agregar nuevo usuario</h2>
+            <div class="input-group" style="margin-top:1rem;">
+                <label>Nombre completo *</label>
+                <input type="text" id="nuevo-user-nombre" placeholder="Ej: Ana García (Personaje)">
+            </div>
+            <div class="input-group">
+                <label>Clave de acceso *</label>
+                <input type="password" id="nuevo-user-clave" placeholder="4 dígitos (ej: 0000)" maxlength="10">
+            </div>
+            <div id="nuevo-user-error" style="color:#f87171;font-size:.85rem;display:none;margin-top:.5rem;"></div>
+            <div style="display:flex;gap:.8rem;margin-top:1.2rem;">
+                <button class="cd-btn-yes" onclick="confirmarAgregarUsuario()">✅ Confirmar</button>
+                <button class="cd-btn-no" onclick="cerrarModalAgregarUsuario()">Cancelar</button>
+            </div>
         </div>
     </div>
 
@@ -887,8 +964,9 @@
         <div class="film-strip film-strip-bottom"></div>
         <div class="credits">
             <h3>CRÉDITOS FINALES</h3>
-            <p>LARGOMETRAJE: "PROD1G0" (2026)</p>
+            <p>LARGOMETRAJE: "PROD1G0"</p>
             <p class="credits-small">UNA CELEBRACIÓN A LA PASIÓN, EL TRABAJO EN EQUIPO Y EL ARTE INDEPENDIENTE.</p>
+            <p class="credits-produccion">Una producción integral de <strong>Omar Sef</strong></p>
             <p class="copyright">© 2026 FIESTA PRÓDIGO • TODOS LOS DERECHOS RESERVADOS</p>
         </div>
     </footer>
