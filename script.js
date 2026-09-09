@@ -661,9 +661,6 @@ function initGuestForm() {
         }
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
-        // Descargar JSON individual (nombre fijo por usuario → reemplazable en repositorio2)
-        downloadResponseJSON(newEntry);
-
         // Mostrar Modal de éxito con info de cambios restantes (votación)
         const remaining = MAX_EDITS - newEntry.editCount;
         const remAsist  = MAX_EDITS_ASIST - (newEntry.editCountAsistencia || 0);

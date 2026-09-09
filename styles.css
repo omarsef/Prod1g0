@@ -2090,12 +2090,24 @@ textarea:focus {
         gap: 1.5rem;
     }
     .hero-start-panel {
+        order: -1; /* el panel con el botón aparece ANTES de la claqueta en mobile */
         max-width: 100%;
         min-width: unset;
         width: 100%;
         text-align: center;
     }
     .hero-title-side { font-size: 1.4rem; }
+    .hero-start-btn {
+        font-size: 1.1rem !important;
+        padding: 1.1rem 2rem !important;
+        box-shadow: 0 0 18px 4px rgba(255, 210, 0, 0.55) !important;
+        animation: pulse-gold 1.8s ease-in-out infinite;
+    }
+}
+
+@keyframes pulse-gold {
+    0%, 100% { box-shadow: 0 0 14px 3px rgba(255, 210, 0, 0.45); }
+    50%       { box-shadow: 0 0 26px 8px rgba(255, 210, 0, 0.75); }
 }
 
 
