@@ -1464,6 +1464,9 @@ async function renderAdminPanel() {
     // Acordeón Asistencia & Colores
     renderAsistenciaColoresTabla(data);
 
+    // Acordeón Prod1g0 de Platino
+    renderPlatinoAdmin(data);
+
     // Acordeón Ranking Global
     renderRankingGlobal(data);
 
@@ -1981,6 +1984,85 @@ function renderAsistenciaColoresTabla(data) {
 
 
 // ----------------------------------------------------------
+// PROD1G0 DE PLATINO — Votaciones del Premio Especial (Terna 11)
+// ----------------------------------------------------------
+function renderPlatinoAdmin(data) {
+    const container = document.getElementById('platino-admin-container');
+    if (!container) return;
+
+    if (data.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin votos aún.</p>';
+        return;
+    }
+
+    // Calcular puntos terna11 (voto1=2pts, voto2=1pt)
+    const scores = {};
+    data.forEach(item => {
+        const v1 = item['terna11_voto1'];
+        const v2 = item['terna11_voto2'];
+        if (v1) {
+            if (!scores[v1]) scores[v1] = { pts: 0, primeros: 0, segundos: 0 };
+            scores[v1].pts += 2;
+            scores[v1].primeros++;
+        }
+        if (v2) {
+            if (!scores[v2]) scores[v2] = { pts: 0, primeros: 0, segundos: 0 };
+            scores[v2].pts += 1;
+            scores[v2].segundos++;
+        }
+    });
+
+    const sorted = Object.entries(scores).sort((a, b) => b[1].pts - a[1].pts || b[1].primeros - a[1].primeros);
+    const votaron = data.filter(d => d['terna11_voto1'] || d['terna11_voto2']).length;
+
+    let html = `
+        <div style="background:var(--card-bg,#1a1a2e);border:1px solid var(--gold-primary,#e5a93c);border-radius:10px;padding:1.2rem;margin-bottom:1.2rem;">
+            <p style="color:var(--gold-primary,#e5a93c);font-weight:700;margin:0 0 .3rem;">
+                ✨ Premio PROD1G0 DE PLATINO
+            </p>
+            <p style="color:var(--text-muted);font-size:.85rem;margin:0;">
+                ${votaron} de ${data.length} participante${data.length !== 1 ? 's' : ''} votaron este premio especial.
+            </p>
+        </div>`;
+
+    if (sorted.length === 0) {
+        html += '<p style="color:var(--text-muted);padding:1rem;">Sin votos registrados para este premio.</p>';
+        container.innerHTML = html;
+        return;
+    }
+
+    html += `<div class="terna-results-list">`;
+
+    const medals = ['🥇', '🥈', '🥉'];
+    sorted.forEach(([name, stat], idx) => {
+        const medal  = medals[idx] || `<span style="color:var(--text-muted);font-weight:700;">#${idx + 1}</span>`;
+        const isFirst = idx === 0;
+        html += `
+            <div class="terna-result-row ${isFirst ? 'terna-result-winner' : ''}"
+                 style="${isFirst ? 'border:1px solid var(--gold-primary,#e5a93c);background:rgba(229,169,60,.08);' : ''}border-radius:8px;padding:.75rem 1rem;margin-bottom:.5rem;display:flex;align-items:center;gap:.8rem;">
+                <div style="font-size:1.4rem;width:2rem;text-align:center;">${medal}</div>
+                <div style="flex:1;">
+                    <strong style="color:${isFirst ? 'var(--gold-primary,#e5a93c)' : 'inherit'};font-size:${isFirst ? '1.05rem' : '.95rem'};">
+                        ${escapeHTML(name)}
+                    </strong>
+                </div>
+                <div style="text-align:right;line-height:1.3;">
+                    <span style="font-size:1.2rem;font-weight:700;color:var(--gold-primary,#e5a93c);">${stat.pts}</span>
+                    <span style="color:var(--text-muted);font-size:.78rem;"> pts</span>
+                    <div style="color:var(--text-muted);font-size:.75rem;">
+                        👑 ${stat.primeros} &nbsp; ⭐ ${stat.segundos}
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+
+
+// ----------------------------------------------------------
 // RANKING GLOBAL — Suma de puntos de todas las ternas
 // ----------------------------------------------------------
 function renderRankingGlobal(data) {
@@ -2062,6 +2144,7 @@ function abrirVistaPreviaImpresion() {
     const opts = {
         ganadores: document.getElementById('print-opt-ganadores')?.checked,
         ranking:   document.getElementById('print-opt-ranking')?.checked,
+        platino:   document.getElementById('print-opt-platino')?.checked,
         descargos: document.getElementById('print-opt-descargos')?.checked,
         gratitud:  document.getElementById('print-opt-gratitud')?.checked,
         colores:   document.getElementById('print-opt-colores')?.checked,
@@ -2152,6 +2235,33 @@ function abrirVistaPreviaImpresion() {
                 <td class="pts">${pts} pts</td>
             </tr>`;
         });
+        html += `</tbody></table>`;
+    }
+
+    // ── PROD1G0 DE PLATINO ──────────────────────────────────────────────
+    if (opts.platino) {
+        const pScores = {};
+        data.forEach(item => {
+            const v1 = item['terna11_voto1'];
+            const v2 = item['terna11_voto2'];
+            if (v1) { if (!pScores[v1]) pScores[v1] = 0; pScores[v1] += 2; }
+            if (v2) { if (!pScores[v2]) pScores[v2] = 0; pScores[v2] += 1; }
+        });
+        const pSorted = Object.entries(pScores).sort((a, b) => b[1] - a[1]);
+        const pMedals = ['🥇', '🥈', '🥉'];
+        html += `<h2>✨ PROD1G0 DE PLATINO — Premio Especial</h2>
+        <table><thead><tr><th>#</th><th>Nombre</th><th>Puntos</th></tr></thead><tbody>`;
+        if (pSorted.length === 0) {
+            html += `<tr><td colspan="3" style="color:#9ca3af;font-style:italic;">Sin votos registrados.</td></tr>`;
+        } else {
+            pSorted.forEach(([name, pts], idx) => {
+                html += `<tr ${idx === 0 ? 'class="winner-row"' : ''}>
+                    <td class="medal">${pMedals[idx] || '#' + (idx + 1)}</td>
+                    <td>${escapeHTML(name)}</td>
+                    <td class="pts">${pts} pts</td>
+                </tr>`;
+            });
+        }
         html += `</tbody></table>`;
     }
 
