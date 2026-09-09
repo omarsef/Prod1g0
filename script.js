@@ -1132,7 +1132,9 @@ async function initPersonajesPage() {
         const nombreReal  = data.nombre;
         const personaje   = data.personaje;
         const photoKey    = 'prodigo_photo_' + safeFileName(name);
-        const storedPhoto = localStorage.getItem(photoKey);
+        // Foto: primero desde Firestore (data.photo), luego localStorage como caché
+        const storedPhoto = data.photo || localStorage.getItem(photoKey);
+        if (data.photo && !localStorage.getItem(photoKey)) localStorage.setItem(photoKey, data.photo);
 
         const card = document.createElement('div');
         card.className = 'personaje-card';
@@ -1154,7 +1156,9 @@ async function openPersonajeModal(name) {
     const data = await getPersonajeData(name);
 
     const photoKey    = 'prodigo_photo_' + safeFileName(name);
-    const storedPhoto = localStorage.getItem(photoKey);
+    // Foto: primero desde Firestore (data.photo), luego localStorage como caché
+    const storedPhoto = data.photo || localStorage.getItem(photoKey);
+    if (data.photo && !localStorage.getItem(photoKey)) localStorage.setItem(photoKey, data.photo);
 
     const body = document.getElementById('personaje-modal-body');
     body.innerHTML = `
@@ -1509,9 +1513,12 @@ async function renderFotosAdminGrid() {
         const personaje   = pdata.personaje;
         const color       = pdata.color;
         const emoji       = pdata.emoji;
-        const photoKey    = 'prodigo_photo_' + safeFileName(name);
-        const stored      = localStorage.getItem(photoKey);
         const sfn         = safeFileName(name);
+        const photoKey    = 'prodigo_photo_' + sfn;
+        // Foto: primero desde Firestore (pdata.photo), luego localStorage como caché
+        const stored      = pdata.photo || localStorage.getItem(photoKey);
+        // Sincronizar al localStorage para tenerlo disponible offline
+        if (pdata.photo && !localStorage.getItem(photoKey)) localStorage.setItem(photoKey, pdata.photo);
 
         const cell = document.createElement('div');
         cell.className = 'foto-admin-cell';
@@ -1577,7 +1584,7 @@ async function renderFotosAdminGrid() {
     }
 }
 
-function handleFotoUpload(input, name, sfn) {
+async function handleFotoUpload(input, name, sfn) {
     const file = input.files[0];
     if (!file) return;
     if (file.size > 800 * 1024) {
@@ -1585,19 +1592,40 @@ function handleFotoUpload(input, name, sfn) {
         return;
     }
     const reader = new FileReader();
-    reader.onload = function(e) {
-        const photoKey = 'prodigo_photo_' + (sfn || safeFileName(name));
-        localStorage.setItem(photoKey, e.target.result);
+    reader.onload = async function(e) {
+        const useSfn   = sfn || safeFileName(name);
+        const photoKey = 'prodigo_photo_' + useSfn;
+        const dataUrl  = e.target.result;
+
+        // Guardar en localStorage (cache rápida)
+        localStorage.setItem(photoKey, dataUrl);
+
+        // Guardar en Firestore para que persista en todos los dispositivos
+        const current = await getPersonajeData(name);
+        await fbSavePersonaje(useSfn, { ...current, photo: dataUrl });
+        localStorage.setItem('prodigo_personaje_edit_' + useSfn, JSON.stringify({ ...current, photo: dataUrl }));
+
         renderFotosAdminGrid();
         initPersonajesPage();
     };
     reader.readAsDataURL(file);
 }
 
-function deleteFoto(name, sfn) {
+async function deleteFoto(name, sfn) {
     if (!confirm('¿Eliminar la foto de ' + name + '?')) return;
-    const photoKey = 'prodigo_photo_' + (sfn || safeFileName(name));
+    const useSfn   = sfn || safeFileName(name);
+    const photoKey = 'prodigo_photo_' + useSfn;
+
+    // Borrar de localStorage
     localStorage.removeItem(photoKey);
+
+    // Borrar de Firestore
+    const current = await getPersonajeData(name);
+    const updated  = { ...current };
+    delete updated.photo;
+    await fbSavePersonaje(useSfn, updated);
+    localStorage.setItem('prodigo_personaje_edit_' + useSfn, JSON.stringify(updated));
+
     renderFotosAdminGrid();
     initPersonajesPage();
 }
