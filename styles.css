@@ -1024,9 +1024,10 @@ textarea:focus {
     background: rgba(0, 0, 0, 0.88);
     backdrop-filter: blur(8px);
     z-index: 1000;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     padding: 1rem;
+    overflow-y: auto;
 }
 
 .modal.active {
@@ -2204,6 +2205,7 @@ textarea:focus {
     position: relative;
     max-width: 480px;
     padding: 2.5rem 2rem 2rem !important;
+    margin: auto;
 }
 
 .modal-close-x {

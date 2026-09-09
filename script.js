@@ -1022,18 +1022,18 @@ const PERSONAJES_DATA = {
         color: '#00695c'
     },
     'Maximo Grecco (Agustin)': {
-        nombre: 'Maximo Grecco',
-        personaje: 'Agustín',
-        descripcion: 'Agustín es el personaje que el espectador ama odiar. Maximo lo construyó con un placer evidente.',
-        fun_fact: 'No siempre se sabía la letra... pero lo que hacía con eso era puro arte.',
+        nombre: 'Agustín',
+        personaje: 'Máximo Grecco',
+        descripcion: 'Máximo es el analista principal del Departamento de Investigaciones Federales. Es la mente detrás de cada detalle técnico y el soporte analítico indispensable en los casos más complejos. Detrás de su apariencia frágil y retraída, se esconde el integrante con mayor coraje del equipo, demostrando una valentía inquebrantable a la hora de tomar decisiones cruciales en situaciones límite.',
+        fun_fact: 'Agustín compuso a Máximo de una manera sublime y magistral en cada detalle. Aportó un carisma único que le hace pleno honor al personaje, logrando deslumbrar a la producción en cada toma con una presencia en cámara entrañable y potente.',
         emoji: '😈',
         color: '#6a1b9a'
     },
     'Mercedes Fusco (Lorena)': {
-        nombre: 'Mercedes Fusco',
-        personaje: 'Lorena',
-        descripcion: 'Lorena es la columna vertebral de la familia Fusco. Mercedes la cargó con una dignidad que emociona.',
-        fun_fact: 'Sus escenas más emotivas se filmaron con calor extremo, y nadie lo hubiera notado.',
+        nombre: 'Lorena',
+        personaje: 'Mercedes Fusco',
+        descripcion: 'Mercedes es la hija mayor de Víctor Fusco (la víctima) y la figura más desconcertante de toda la trama. Su perfil aparentemente naïf y su aire de inocencia actúan como un escudo opaco que hace dudar constantemente al espectador sobre sus verdaderas intenciones. Es un enigma constante: una presencia amigable que guarda secretos que podrían redefinir todo el caso.',
+        fun_fact: 'Lorena abordó el papel con una practicidad y contundencia admirables. Su actuación destaca por la riqueza de sus matices, manejando con absoluta precisión las transiciones emocionales del personaje para construir en cada escena el clima de tensión e incertidumbre que la historia requiere.',
         emoji: '💎',
         color: '#880e4f'
     },
@@ -1356,28 +1356,9 @@ function initAdminModal() {
         adminPanelModal.classList.remove('active');
     });
 
-    // 💾 Guardar y Cerrar: descarga backup JSON desde Firestore y cierra el panel
+    // 💾 Guardar y Cerrar: simplemente cierra el panel (los datos ya están en Firestore)
     if (btnSaveCloseAdmin) {
-        btnSaveCloseAdmin.addEventListener('click', async () => {
-            let data = await fbGetAllResponses();
-            if (!data || data.length === 0) data = getStoredData();
-            if (data.length === 0) {
-                alert('No hay datos para exportar.');
-                adminPanelModal.classList.remove('active');
-                return;
-            }
-            if (!confirm(`¿Descargar backup de ${data.length} respuesta${data.length !== 1 ? 's' : ''} y cerrar el panel?`)) return;
-
-            // Descarga clásica del backup completo
-            const filename = `prod1g0_backup_${new Date().toISOString().slice(0,10)}.json`;
-            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' });
-            const url  = URL.createObjectURL(blob);
-            const a    = document.createElement('a');
-            a.href = url; a.download = filename;
-            document.body.appendChild(a); a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-
+        btnSaveCloseAdmin.addEventListener('click', () => {
             adminPanelModal.classList.remove('active');
         });
     }
