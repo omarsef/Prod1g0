@@ -2,6 +2,99 @@
 // LÓGICA DE FIESTA PRÓDIGO 2026 - LOGIN INICIAL & FLUJO PERSONALIZADO
 // ==========================================================
 
+// ==========================================================
+// FIREBASE — inline (sin módulos externos)
+// ==========================================================
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+import {
+    getFirestore, doc, getDoc, setDoc, getDocs,
+    deleteDoc, collection, query, orderBy
+} from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
+
+const _fbApp = initializeApp({
+    apiKey: "AIzaSyDrKwVwHtTh0KbuPplCSpq0GvBDU0HtgMI",
+    authDomain: "fiesta-prodigo-2026.firebaseapp.com",
+    projectId: "fiesta-prodigo-2026",
+    storageBucket: "fiesta-prodigo-2026.firebasestorage.app",
+    messagingSenderId: "404912982263",
+    appId: "1:404912982263:web:56fe4d3f485b8513c0abf2"
+});
+const _fbDb = getFirestore(_fbApp);
+
+function _fbKey(name) {
+    return (name || '').toLowerCase().replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+
+async function fbGetAllResponses() {
+    try {
+        const snap = await getDocs(query(collection(_fbDb, 'responses'), orderBy('timestamp', 'desc')));
+        return snap.docs.map(d => d.data());
+    } catch(e) { console.warn('[FB] fbGetAllResponses:', e.message); return null; }
+}
+async function fbGetResponse(guestName) {
+    try {
+        const snap = await getDoc(doc(_fbDb, 'responses', _fbKey(guestName)));
+        return snap.exists() ? snap.data() : null;
+    } catch(e) { console.warn('[FB] fbGetResponse:', e.message); return null; }
+}
+async function fbSaveResponse(entry) {
+    try {
+        console.log('[FB] Guardando:', _fbKey(entry.guestName));
+        await setDoc(doc(_fbDb, 'responses', _fbKey(entry.guestName)), entry);
+        console.log('[FB] Guardado OK');
+        return true;
+    } catch(e) { console.error('[FB] fbSaveResponse ERROR:', e.code, e.message); return false; }
+}
+async function fbDeleteResponse(guestName) {
+    try {
+        await deleteDoc(doc(_fbDb, 'responses', _fbKey(guestName)));
+        return true;
+    } catch(e) { return false; }
+}
+async function fbGetUsuarios() {
+    try {
+        const snap = await getDocs(collection(_fbDb, 'usuarios'));
+        return snap.docs.map(d => d.data());
+    } catch(e) { return null; }
+}
+async function fbSaveUsuario(userObj) {
+    try {
+        await setDoc(doc(_fbDb, 'usuarios', _fbKey(userObj.name)), userObj);
+        return true;
+    } catch(e) { return false; }
+}
+async function fbDeleteUsuario(name) {
+    try {
+        await deleteDoc(doc(_fbDb, 'usuarios', _fbKey(name)));
+        return true;
+    } catch(e) { return false; }
+}
+async function fbGetPersonaje(sfn) {
+    try {
+        const snap = await getDoc(doc(_fbDb, 'personajes', sfn));
+        return snap.exists() ? snap.data() : null;
+    } catch(e) { return null; }
+}
+async function fbSavePersonaje(sfn, data) {
+    try {
+        await setDoc(doc(_fbDb, 'personajes', sfn), data);
+        return true;
+    } catch(e) { return false; }
+}
+async function fbGetItinerario() {
+    try {
+        const snap = await getDoc(doc(_fbDb, 'config', 'itinerario'));
+        return snap.exists() ? snap.data().items : null;
+    } catch(e) { return null; }
+}
+async function fbSaveItinerario(items) {
+    try {
+        await setDoc(doc(_fbDb, 'config', 'itinerario'), { items });
+        return true;
+    } catch(e) { return false; }
+}
+// ==========================================================
+
 const STORAGE_KEY = 'prodigo_2026_responses_v4';
 const SESSION_USER_KEY = 'prodigo_2026_active_user';
 const MAX_EDITS = 3;           // máximo de cambios de votación por usuario
@@ -93,20 +186,19 @@ function initLoginSystem() {
     refreshLoginDropdown();
 
     // Validar Login
-    loginForm.addEventListener('submit', (e) => {
+    loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const selectedUser = userSelect.value;
         const passwordInput = document.getElementById('login-password-input').value.trim();
 
-        // Leer usuarios custom del localStorage
-        const usersDB = getUsuariosDB();
+        // Leer usuarios desde Firestore (con fallback a localStorage)
+        const usersDB = await getUsuariosDB();
         const userRecord = usersDB.find(u => u.name === selectedUser);
 
         let isValid = false;
         let isAdmin = false;
 
         if (userRecord) {
-            // Usuario en la BD custom
             if (passwordInput === userRecord.clave) {
                 isValid = true;
                 isAdmin = userRecord.isAdmin || false;
@@ -157,7 +249,7 @@ function initLoginSystem() {
     }
 }
 
-function applyUserSession(user) {
+async function applyUserSession(user) {
     document.getElementById('initial-login-screen').style.display = 'none';
     document.getElementById('main-app-container').style.display = 'block';
 
@@ -185,7 +277,8 @@ function applyUserSession(user) {
     adminBadge.style.display = 'none';
     btnAdminNav.style.display = 'none';
 
-    const existing = getStoredData().find(d => d.guestName === user.name);
+    const existing = await fbGetResponse(user.name)
+        || getStoredData().find(d => d.guestName === user.name); // fallback local
 
     const heroStartBtn = document.getElementById('btn-hero-start');
 
@@ -193,7 +286,6 @@ function applyUserSession(user) {
         const editCount = existing.editCount || 0;
         userHasCompleted = true;
 
-        // Ocultar el botón de inicio: el usuario ya eligió color y cargó sus datos
         if (heroStartBtn) heroStartBtn.style.display = 'none';
 
         prefillFormWithExisting(existing);
@@ -219,7 +311,6 @@ function applyUserSession(user) {
             showPreviousDataModal(existing, editCount);
         }
     } else {
-        // Primera vez: wizard paso a paso — mostrar el botón
         if (heroStartBtn) heroStartBtn.style.display = '';
         userHasCompleted = false;
         maxAllowedStep = 0;
@@ -526,13 +617,16 @@ function initGuestForm() {
     const form = document.getElementById('wrap-survey-form');
     const successModal = document.getElementById('success-modal');
 
-    form.addEventListener('submit', (e) => {
+    form.addEventListener('submit', async (e) => {
         e.preventDefault();
+        console.log('[SUBMIT] Inicio del envío');
+
+        try {
 
         // Verificar en tiempo real si el usuario ya alcanzó el límite de cambios
-        // (cubre el caso de re-envío sin cerrar sesión)
         if (loggedUser && !loggedUser.isAdmin) {
-            const liveData = getStoredData().find(d => d.guestName === loggedUser.name);
+            const liveData = await fbGetResponse(loggedUser.name)
+                || getStoredData().find(d => d.guestName === loggedUser.name);
             if (liveData && (liveData.editCount || 0) >= MAX_EDITS) {
                 document.getElementById('max-changes-modal').classList.add('active');
                 return;
@@ -551,9 +645,7 @@ function initGuestForm() {
         const cantAcomp     = parseInt(formData.get('cantAcompaniantes') || '0', 10) || 0;
         const nombresRaw    = (formData.get('nombresAcompaniantes') || '').trim();
 
-        // ── Asignación balanceada de colores a acompañantes ──────────────────────
-        // Cuenta colores actuales en todos los registros (titular + acompañantes)
-        // y asigna el color menos usado a cada acompañante nuevo.
+        // Asignación balanceada de colores a acompañantes
         const COLORS = ['ROJO', 'AMARILLO', 'VERDE'];
         function assignBalancedColors(numCompanions, nombresTexto) {
             if (numCompanions === 0) return [];
@@ -570,7 +662,6 @@ function initGuestForm() {
             const nombres = nombresTexto.split(',').map(s => s.trim()).filter(Boolean);
             const result  = [];
             for (let i = 0; i < numCompanions; i++) {
-                // Elige el color con menor conteo actual
                 const chosen = COLORS.reduce((a, b) => counts[a] <= counts[b] ? a : b);
                 counts[chosen]++;
                 result.push({ nombre: nombres[i] || `Acompañante ${i + 1}`, color: chosen });
@@ -582,83 +673,72 @@ function initGuestForm() {
             ? assignBalancedColors(cantAcomp, nombresRaw)
             : [];
 
+        const g = (field) => (formData.get(field) || '').trim();
+
         const newEntry = {
             id: 'resp_' + Date.now(),
             timestamp: new Date().toLocaleString(),
             guestName: loggedUser ? loggedUser.name : 'Invitado',
             confirmGift: 'Sí',
 
-            // Color y Asistencia (Paso 1)
             colorEvento:           formData.get('colorEvento') || '',
             asistencia:            asistenciaVal,
             cantAcompaniantes:     cantAcomp || '',
             nombresAcompaniantes:  nombresRaw,
             coloresAcompaniantes:  coloresAcompaniantes,
 
-            // Descargos y Gratitud (Paso 2)
-            descargo: formData.get('descargo').trim(),
-            gratitud: formData.get('gratitud').trim(),
+            descargo: g('descargo'),
+            gratitud: g('gratitud'),
 
-            // Ternas 1 a 9 con 2 nominados (Voto 1: 2 pts, Voto 2: 1 pt)
             terna1_voto1: formData.get('terna1_voto1') || '',
             terna1_voto2: formData.get('terna1_voto2') || '',
-
             terna2_voto1: formData.get('terna2_voto1') || '',
             terna2_voto2: formData.get('terna2_voto2') || '',
-
             terna3_voto1: formData.get('terna3_voto1') || '',
             terna3_voto2: formData.get('terna3_voto2') || '',
-
             terna4_voto1: formData.get('terna4_voto1') || '',
             terna4_voto2: formData.get('terna4_voto2') || '',
-
             terna5_voto1: formData.get('terna5_voto1') || '',
             terna5_voto2: formData.get('terna5_voto2') || '',
-
             terna6_voto1: formData.get('terna6_voto1') || '',
             terna6_voto2: formData.get('terna6_voto2') || '',
-
             terna7_voto1: formData.get('terna7_voto1') || '',
             terna7_voto2: formData.get('terna7_voto2') || '',
-
             terna8_voto1: formData.get('terna8_voto1') || '',
             terna8_voto2: formData.get('terna8_voto2') || '',
-
             terna9_voto1: formData.get('terna9_voto1') || '',
             terna9_voto2: formData.get('terna9_voto2') || '',
+            terna10: g('terna10'),
 
-            // Terna 10 texto descriptivo
-            terna10: formData.get('terna10').trim(),
-
-            // Gustos Culturales (Paso 3)
-            favMovies: formData.get('favMovies').trim(),
-            favActors: formData.get('favActors').trim(),
-            favPaintings: formData.get('favPaintings').trim(),
-            favMusic: formData.get('favMusic').trim()
+            favMovies:    g('favMovies'),
+            favActors:    g('favActors'),
+            favPaintings: g('favPaintings'),
+            favMusic:     g('favMusic')
         };
 
-        // ── Contadores separados: editCount (votación) y editCountAsistencia ───
-        // editCount      : sube en CADA envío (abarca todo el formulario)
-        // editCountAsistencia: sube solo si la asistencia/acompañantes cambiaron
-        const data = getStoredData();
-        const existingIndex = data.findIndex(d => d.guestName === newEntry.guestName);
-        if (existingIndex !== -1) {
-            const prev = data[existingIndex];
-            newEntry.editCount = (prev.editCount || 0) + 1;
+        console.log('[SUBMIT] newEntry armado para:', newEntry.guestName);
 
-            // Solo incrementa si cambia color, asistencia, cantidad o nombres
-            const asistCambia = (prev.colorEvento    !== newEntry.colorEvento)    ||
-                                 (prev.asistencia      !== newEntry.asistencia)     ||
-                                 (prev.cantAcompaniantes !== String(newEntry.cantAcompaniantes)) ||
+        const prev = await fbGetResponse(newEntry.guestName)
+            || getStoredData().find(d => d.guestName === newEntry.guestName);
+
+        if (prev) {
+            newEntry.editCount = (prev.editCount || 0) + 1;
+            const asistCambia = (prev.colorEvento         !== newEntry.colorEvento)    ||
+                                 (prev.asistencia           !== newEntry.asistencia)     ||
+                                 (prev.cantAcompaniantes    !== String(newEntry.cantAcompaniantes)) ||
                                  (prev.nombresAcompaniantes !== newEntry.nombresAcompaniantes);
             newEntry.editCountAsistencia = (prev.editCountAsistencia || 0) + (asistCambia ? 1 : 0);
-
-            data[existingIndex] = newEntry;
         } else {
-            newEntry.editCount            = 1;
-            newEntry.editCountAsistencia  = 1;
-            data.unshift(newEntry);
+            newEntry.editCount           = 1;
+            newEntry.editCountAsistencia = 1;
         }
+
+        console.log('[SUBMIT] Llamando fbSaveResponse...');
+        const fbOk = await fbSaveResponse(newEntry);
+        console.log('[SUBMIT] fbSaveResponse resultado:', fbOk);
+
+        const data = getStoredData().filter(d => d.guestName !== newEntry.guestName);
+        data.unshift(newEntry);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
         // Mostrar Modal de éxito con info de cambios restantes (votación)
@@ -675,6 +755,11 @@ function initGuestForm() {
         }
 
         successModal.classList.add('active');
+
+        } catch(submitErr) {
+            console.error('[SUBMIT] ERROR INESPERADO:', submitErr);
+            alert('Ocurrió un error al guardar. Abrí la consola (F12) y avisá el mensaje de error:\n\n' + submitErr.message);
+        }
     });
 }
 
@@ -704,9 +789,10 @@ function resetWizardAndCloseModal() {
 
 // Refresca el estado de la sesión activa (contador de intentos, bloqueo, pre-relleno)
 // sin volver a mostrar la pantalla de login. Se llama después de cada envío.
-function refreshSessionState() {
+async function refreshSessionState() {
     if (!loggedUser || loggedUser.isAdmin) return;
-    const existing = getStoredData().find(d => d.guestName === loggedUser.name);
+    const existing = await fbGetResponse(loggedUser.name)
+        || getStoredData().find(d => d.guestName === loggedUser.name);
     if (!existing) return;
 
     const editCount = existing.editCount || 0;
@@ -728,9 +814,8 @@ function refreshSessionState() {
 }
 
 // ----------------------------------------------------------
-// DESCARGA DE JSON INDIVIDUAL POR RESPUESTA
+// HELPERS DE NOMBRE DE ARCHIVO
 // ----------------------------------------------------------
-// Nombre seguro de archivo (sin tildes ni caracteres raros)
 function safeFileName(guestName) {
     return (guestName || 'invitado')
         .normalize('NFD')
@@ -738,53 +823,6 @@ function safeFileName(guestName) {
         .replace(/[^a-zA-Z0-9_\- ]/g, '')
         .trim()
         .replace(/\s+/g, '_');
-}
-
-// Guarda el JSON en repositorio2 usando File System Access API (Chrome/Edge ≥86)
-// Si el browser no la soporta, hace la descarga clásica como fallback.
-// La primera vez le pide al usuario seleccionar la carpeta repositorio2;
-// la guarda en sessionStorage para no volver a preguntar en la misma sesión.
-async function downloadResponseJSON(entry) {
-    const filename  = `prod1g0_${safeFileName(entry.guestName)}.json`;
-    const content   = JSON.stringify(entry, null, 2);
-
-    // ── Intento 1: File System Access API (escribe directo en disco) ──────────
-    if ('showDirectoryPicker' in window) {
-        try {
-            // Reutilizar directorio elegido en esta sesión
-            let dirHandle = window._repo2DirHandle || null;
-
-            if (!dirHandle) {
-                dirHandle = await window.showDirectoryPicker({
-                    id: 'prodigo-repo2',
-                    mode: 'readwrite',
-                    startIn: 'downloads',
-                });
-                window._repo2DirHandle = dirHandle;
-            }
-
-            const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-            const writable   = await fileHandle.createWritable();
-            await writable.write(content);
-            await writable.close();
-            return; // éxito → no hace falta el fallback
-        } catch (err) {
-            // Usuario canceló el picker o error de permisos → fallback silencioso
-            console.warn('File System Access API falló, usando descarga clásica:', err);
-            window._repo2DirHandle = null; // resetear para la próxima vez
-        }
-    }
-
-    // ── Fallback: descarga clásica al directorio de Descargas del browser ─────
-    const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
 }
 
 // ----------------------------------------------------------
@@ -1061,16 +1099,15 @@ const PERSONAJES_DATA = {
 };
 
 // Inicializa la grilla de personajes (se llama cuando el usuario ya completó)
-function initPersonajesPage() {
+async function initPersonajesPage() {
     const grid = document.getElementById('personajes-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    getActiveUserList().forEach(name => {
-        const data = getPersonajeData(name);
+    for (const name of getActiveUserList()) {
+        const data = await getPersonajeData(name);
         const emoji = data.emoji;
         const color = data.color;
-        // nombre real (actor/crew) es el protagonista
         const nombreReal  = data.nombre;
         const personaje   = data.personaje;
         const photoKey    = 'prodigo_photo_' + safeFileName(name);
@@ -1088,12 +1125,12 @@ function initPersonajesPage() {
         `;
         card.addEventListener('click', () => openPersonajeModal(name));
         grid.appendChild(card);
-    });
+    }
 }
 
 // Abre el modal con la ficha completa del personaje
-function openPersonajeModal(name) {
-    const data = getPersonajeData(name);
+async function openPersonajeModal(name) {
+    const data = await getPersonajeData(name);
 
     const photoKey    = 'prodigo_photo_' + safeFileName(name);
     const storedPhoto = localStorage.getItem(photoKey);
@@ -1121,10 +1158,11 @@ function openPersonajeModal(name) {
 // ----------------------------------------------------------
 // PÁGINA 6: CAMBIAR VOTACIÓN
 // ----------------------------------------------------------
-function renderCambiarDatosPage() {
+async function renderCambiarDatosPage() {
     if (!loggedUser || loggedUser.isAdmin) return;
 
-    const existing = getStoredData().find(d => d.guestName === loggedUser.name);
+    const existing = await fbGetResponse(loggedUser.name)
+        || getStoredData().find(d => d.guestName === loggedUser.name);
     const infoEl    = document.getElementById('cambiar-datos-info');
     const actionsEl = document.getElementById('cambiar-datos-actions');
     if (!infoEl || !actionsEl) return;
@@ -1160,8 +1198,9 @@ function renderCambiarDatosPage() {
     `;
 }
 
-function startEditFromCambiarDatos() {
-    const existing = getStoredData().find(d => d.guestName === loggedUser.name);
+async function startEditFromCambiarDatos() {
+    const existing = await fbGetResponse(loggedUser.name)
+        || getStoredData().find(d => d.guestName === loggedUser.name);
     if (existing) {
         prefillFormWithExisting(existing);
         setTernasMode('scroll');
@@ -1284,51 +1323,27 @@ function initAdminModal() {
         adminPanelModal.classList.remove('active');
     });
 
-    // 💾 Guardar y Cerrar: exporta un backup JSON de todos los datos y cierra el modal
+    // 💾 Guardar y Cerrar: descarga backup JSON desde Firestore y cierra el panel
     if (btnSaveCloseAdmin) {
         btnSaveCloseAdmin.addEventListener('click', async () => {
-            const data = getStoredData();
+            let data = await fbGetAllResponses();
+            if (!data || data.length === 0) data = getStoredData();
             if (data.length === 0) {
                 alert('No hay datos para exportar.');
                 adminPanelModal.classList.remove('active');
                 return;
             }
-            if (!confirm(`¿Guardar backup de ${data.length} respuesta${data.length !== 1 ? 's' : ''} y cerrar el panel?`)) return;
+            if (!confirm(`¿Descargar backup de ${data.length} respuesta${data.length !== 1 ? 's' : ''} y cerrar el panel?`)) return;
 
-            // Exportar backup JSON completo
+            // Descarga clásica del backup completo
             const filename = `prod1g0_backup_${new Date().toISOString().slice(0,10)}.json`;
-            const content  = JSON.stringify(data, null, 2);
-
-            if ('showDirectoryPicker' in window) {
-                try {
-                    let dirHandle = window._repo2DirHandle || null;
-                    if (!dirHandle) {
-                        dirHandle = await window.showDirectoryPicker({ id: 'prodigo-repo2', mode: 'readwrite', startIn: 'downloads' });
-                        window._repo2DirHandle = dirHandle;
-                    }
-                    const fileHandle = await dirHandle.getFileHandle(filename, { create: true });
-                    const writable   = await fileHandle.createWritable();
-                    await writable.write(content);
-                    await writable.close();
-                } catch (err) {
-                    // fallback silencioso
-                    const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
-                    const url  = URL.createObjectURL(blob);
-                    const a    = document.createElement('a');
-                    a.href = url; a.download = filename;
-                    document.body.appendChild(a); a.click();
-                    document.body.removeChild(a);
-                    URL.revokeObjectURL(url);
-                }
-            } else {
-                const blob = new Blob([content], { type: 'application/json;charset=utf-8;' });
-                const url  = URL.createObjectURL(blob);
-                const a    = document.createElement('a');
-                a.href = url; a.download = filename;
-                document.body.appendChild(a); a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json;charset=utf-8;' });
+            const url  = URL.createObjectURL(blob);
+            const a    = document.createElement('a');
+            a.href = url; a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
 
             adminPanelModal.classList.remove('active');
         });
@@ -1374,8 +1389,12 @@ function getStoredData() {
     }
 }
 
-function renderAdminPanel() {
-    const data = getStoredData();
+async function renderAdminPanel() {
+    // Leer desde Firestore; si falla, usar localStorage como respaldo
+    let data = await fbGetAllResponses();
+    if (!data) data = getStoredData();
+    // Actualizar localStorage con los datos frescos de Firestore
+    if (data.length > 0) localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
     // Stats
     document.getElementById('stat-total').innerText      = data.length;
@@ -1444,13 +1463,13 @@ function renderAdminPanel() {
 // ----------------------------------------------------------
 // FOTOS DEL ELENCO — Subida y gestión desde el Panel Admin
 // ----------------------------------------------------------
-function renderFotosAdminGrid() {
+async function renderFotosAdminGrid() {
     const grid = document.getElementById('fotos-admin-grid');
     if (!grid) return;
     grid.innerHTML = '';
 
-    getActiveUserList().forEach(name => {
-        const pdata       = getPersonajeData(name);
+    for (const name of getActiveUserList()) {
+        const pdata       = await getPersonajeData(name);
         const nombreReal  = pdata.nombre;
         const personaje   = pdata.personaje;
         const color       = pdata.color;
@@ -1520,7 +1539,7 @@ function renderFotosAdminGrid() {
         if (delBtn) delBtn.addEventListener('click', () => deleteFoto(name, sfn));
 
         grid.appendChild(cell);
-    });
+    }
 }
 
 function handleFotoUpload(input, name, sfn) {
@@ -2020,7 +2039,7 @@ function exportToJSON() {
     document.body.removeChild(link);
 }
 
-function loadDemoData() {
+async function loadDemoData() {
     const demo = [
         {
             id: 'resp_demo_1',
@@ -2086,19 +2105,22 @@ function loadDemoData() {
         }
     ];
 
+    // Guardar demo en Firestore + localStorage
+    for (const entry of demo) { await fbSaveResponse(entry); }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(demo));
     renderAdminPanel();
     alert('¡Datos de prueba cargados con éxito! Puedes ver el ranking ponderado en la pestaña de Ternas.');
 }
 
-function clearAllData() {
-    const data = getStoredData();
+async function clearAllData() {
+    const data = await fbGetAllResponses() || getStoredData();
     if (data.length === 0) {
         alert('No hay datos almacenados para borrar.');
         return;
     }
     if (confirm(`⚠️ ¿Estás seguro?\n\nSe borrarán los datos de ${data.length} usuario(s).\nEsta acción no se puede deshacer.`)) {
         if (confirm('🔴 SEGUNDA CONFIRMACIÓN: ¿Confirmas el borrado total y definitivo de todos los datos?')) {
+            for (const entry of data) { await fbDeleteResponse(entry.guestName); }
             localStorage.removeItem(STORAGE_KEY);
             renderAdminPanel();
             alert('✅ Todos los datos han sido eliminados. El sistema está en cero.');
@@ -2106,7 +2128,7 @@ function clearAllData() {
     }
 }
 
-function deleteUserData() {
+async function deleteUserData() {
     const sel = document.getElementById('admin-delete-user-select');
     const userName = sel ? sel.value : '';
     if (!userName) {
@@ -2115,6 +2137,7 @@ function deleteUserData() {
     }
     if (confirm(`⚠️ ¿Estás seguro de que querés borrar TODOS los datos de:\n\n"${userName}"?\n\nSe eliminará su encuesta y su contador de cambios. Esta acción no se puede deshacer.`)) {
         if (confirm(`🔴 SEGUNDA CONFIRMACIÓN: ¿Confirmas el borrado de "${userName}"?`)) {
+            await fbDeleteResponse(userName);
             const data = getStoredData().filter(d => d.guestName !== userName);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             renderAdminPanel();
@@ -2127,27 +2150,34 @@ function deleteUserData() {
 // HELPERS: Lista activa de usuarios + datos de personaje
 // ===========================================================
 
-// Devuelve la lista de usuarios (ACTORS_AND_CREW + extras del DB)
+// Devuelve la lista de usuarios (ACTORS_AND_CREW + extras del DB) — sync usando caché local
 function getActiveUserList() {
-    const db = getUsuariosDB();
+    const db = JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
     const extra = db.filter(u => !ACTORS_AND_CREW.includes(u.name)).map(u => u.name);
     return [...ACTORS_AND_CREW, ...extra].sort((a, b) => a.localeCompare(b));
 }
 
-// Lee la DB de usuarios del localStorage
-function getUsuariosDB() {
+// Lee la DB de usuarios: Firestore primero, localStorage como fallback
+async function getUsuariosDB() {
+    const fbData = await fbGetUsuarios();
+    if (fbData !== null) {
+        // Sincronizar localStorage con los datos de Firestore
+        localStorage.setItem(USERS_KEY, JSON.stringify(fbData));
+        return fbData;
+    }
     try {
         return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
     } catch(e) { return []; }
 }
 
-function saveUsuariosDB(db) {
+// Guarda un array completo de usuarios (Firestore + localStorage)
+async function saveUsuariosDB(db) {
+    for (const u of db) { await fbSaveUsuario(u); }
     localStorage.setItem(USERS_KEY, JSON.stringify(db));
 }
 
-// Devuelve los datos de personaje para un nombre de usuario,
-// combinando los datos estáticos con las ediciones guardadas en localStorage.
-function getPersonajeData(name) {
+// Devuelve los datos de personaje: Firestore primero, luego localStorage, luego base estática
+async function getPersonajeData(name) {
     const base = PERSONAJES_DATA[name] || {
         nombre:      name.split('(')[0].trim(),
         personaje:   name.includes('(') ? name.match(/\(([^)]+)\)/)?.[1] || name : name,
@@ -2156,19 +2186,17 @@ function getPersonajeData(name) {
         emoji:       '🎭',
         color:       '#363b4e'
     };
-    const overrideKey = 'prodigo_personaje_edit_' + safeFileName(name);
-    try {
-        const stored = JSON.parse(localStorage.getItem(overrideKey));
-        if (stored) return { ...base, ...stored };
-    } catch(e) {}
-    return base;
+    const sfn = safeFileName(name);
+    const stored = await fbGetPersonaje(sfn)
+        || (() => { try { return JSON.parse(localStorage.getItem('prodigo_personaje_edit_' + sfn)); } catch(e) { return null; } })();
+    return stored ? { ...base, ...stored } : base;
 }
 
 // ===========================================================
 // EDICIÓN DE NOMBRE/PERSONAJE DESDE EL PANEL ADMIN
 // ===========================================================
 
-function guardarEdicionPersonaje(name, sfn, btn) {
+async function guardarEdicionPersonaje(name, sfn, btn) {
     const useSfn = sfn || safeFileName(name);
     const nombreInput    = document.getElementById('edit-nombre-'    + useSfn);
     const personajeInput = document.getElementById('edit-personaje-' + useSfn);
@@ -2185,9 +2213,8 @@ function guardarEdicionPersonaje(name, sfn, btn) {
         return;
     }
 
-    const overrideKey = 'prodigo_personaje_edit_' + useSfn;
-    const current = getPersonajeData(name);
-    localStorage.setItem(overrideKey, JSON.stringify({
+    const current = await getPersonajeData(name);
+    const updated = {
         ...current,
         nombre:      nuevoNombre,
         personaje:   nuevoPersonaje,
@@ -2195,7 +2222,9 @@ function guardarEdicionPersonaje(name, sfn, btn) {
         color:       colorInput   ? colorInput.value          : current.color,
         descripcion: descInput    ? descInput.value.trim()    : current.descripcion,
         fun_fact:    funfactInput ? funfactInput.value.trim()  : current.fun_fact,
-    }));
+    };
+    await fbSavePersonaje(useSfn, updated);
+    localStorage.setItem('prodigo_personaje_edit_' + useSfn, JSON.stringify(updated));
 
     if (btn) { btn.textContent = '✅ Guardado'; setTimeout(() => { btn.textContent = '💾 Guardar cambios'; }, 1800); }
 
@@ -2206,11 +2235,11 @@ function guardarEdicionPersonaje(name, sfn, btn) {
 // GESTIÓN DE USUARIOS Y CLAVES
 // ===========================================================
 
-function renderUsuariosAdminList() {
+async function renderUsuariosAdminList() {
     const container = document.getElementById('usuarios-admin-list');
     if (!container) return;
 
-    const db = getUsuariosDB();
+    const db = await getUsuariosDB();
     // Construir lista completa: ACTORS_AND_CREW base + extras del DB
     const allNames = getActiveUserList();
 
@@ -2226,10 +2255,9 @@ function renderUsuariosAdminList() {
         const clave     = record ? record.clave : (name.includes('Director (Omar)') ? '1111' : '0000');
         const isAdminU  = record ? (record.isAdmin || false) : name.includes('Director (Omar)');
         const sfn       = safeFileName(name);
-        const nameEsc   = name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
 
         html += `
-        <div class="usuario-row" id="urow-${sfn}">
+        <div class="usuario-row" id="urow-${sfn}" data-name="${escapeHTML(name)}">
             <div class="usuario-info">
                 <span class="usuario-nombre">${escapeHTML(name)}</span>
                 ${isAdminU ? '<span class="usuario-badge-admin">👑 ADMIN</span>' : ''}
@@ -2238,63 +2266,76 @@ function renderUsuariosAdminList() {
             <div class="usuario-clave-wrap">
                 <input class="usuario-clave-input" id="uclave-${sfn}" type="text"
                     value="${escapeHTML(clave)}" maxlength="20" placeholder="Clave">
-                <button class="foto-save-btn" onclick="guardarClave('${nameEsc}')">💾</button>
+                <button class="foto-save-btn urow-save-clave">💾</button>
             </div>
             <div class="usuario-acciones">
                 <label class="usuario-admin-toggle" title="Es admin">
-                    <input type="checkbox" ${isAdminU ? 'checked' : ''}
-                        onchange="toggleAdminFlag('${nameEsc}', this.checked)">
+                    <input type="checkbox" class="urow-admin-chk" ${isAdminU ? 'checked' : ''}>
                     Admin
                 </label>
-                <button class="foto-delete-btn" onclick="eliminarUsuario('${nameEsc}')" title="Eliminar usuario">🗑️</button>
+                <button class="foto-delete-btn urow-delete" title="Eliminar usuario">🗑️</button>
             </div>
         </div>`;
     });
     html += '</div>';
     container.innerHTML = html;
+
+    // Adjuntar event listeners usando data-name para soportar nombres con comillas
+    container.querySelectorAll('.usuario-row').forEach(row => {
+        const rowName = row.dataset.name;
+        row.querySelector('.urow-save-clave').addEventListener('click', () => guardarClave(rowName));
+        row.querySelector('.urow-admin-chk').addEventListener('change', function() { toggleAdminFlag(rowName, this.checked); });
+        row.querySelector('.urow-delete').addEventListener('click', () => eliminarUsuario(rowName));
+    });
 }
 
-function guardarClave(name) {
+async function guardarClave(name) {
     const sfn = safeFileName(name);
     const input = document.getElementById('uclave-' + sfn);
     if (!input) return;
     const nuevaClave = input.value.trim();
     if (!nuevaClave) { alert('La clave no puede estar vacía.'); return; }
 
-    const db = getUsuariosDB();
+    const db = await getUsuariosDB();
     const idx = db.findIndex(u => u.name === name);
     const isAdm = name.includes('Director (Omar)');
     if (idx !== -1) {
         db[idx].clave = nuevaClave;
+        await fbSaveUsuario(db[idx]);
     } else {
-        db.push({ name, clave: nuevaClave, isAdmin: isAdm });
+        const newU = { name, clave: nuevaClave, isAdmin: isAdm };
+        db.push(newU);
+        await fbSaveUsuario(newU);
     }
-    saveUsuariosDB(db);
+    localStorage.setItem(USERS_KEY, JSON.stringify(db));
 
     const btn = input.nextElementSibling;
     if (btn) { btn.textContent = '✅'; setTimeout(() => { btn.textContent = '💾'; }, 1800); }
 }
 
-function toggleAdminFlag(name, isAdmin) {
-    const db = getUsuariosDB();
+async function toggleAdminFlag(name, isAdmin) {
+    const db = await getUsuariosDB();
     const idx = db.findIndex(u => u.name === name);
     if (idx !== -1) {
         db[idx].isAdmin = isAdmin;
+        await fbSaveUsuario(db[idx]);
     } else {
-        db.push({ name, clave: '0000', isAdmin });
+        const newU = { name, clave: '0000', isAdmin };
+        db.push(newU);
+        await fbSaveUsuario(newU);
     }
-    saveUsuariosDB(db);
+    localStorage.setItem(USERS_KEY, JSON.stringify(db));
 }
 
-function eliminarUsuario(name) {
+async function eliminarUsuario(name) {
     if (!confirm('¿Eliminar al usuario "' + name + '"?\n\nSi es un usuario base del elenco, solo se eliminarán sus ajustes de clave custom; el nombre seguirá en la lista. Si es un usuario nuevo, se eliminará completamente.')) return;
 
-    // Eliminar de la DB de usuarios
-    const db = getUsuariosDB().filter(u => u.name !== name);
-    saveUsuariosDB(db);
+    await fbDeleteUsuario(name);
+    const db = (await getUsuariosDB()).filter(u => u.name !== name);
+    localStorage.setItem(USERS_KEY, JSON.stringify(db));
 
-    // Si no es base, también eliminar sus datos de encuesta
     if (!ACTORS_AND_CREW.includes(name)) {
+        await fbDeleteResponse(name);
         const survey = getStoredData().filter(d => d.guestName !== name);
         localStorage.setItem(STORAGE_KEY, JSON.stringify(survey));
     }
@@ -2314,7 +2355,7 @@ function cerrarModalAgregarUsuario() {
     document.getElementById('modal-agregar-usuario').classList.remove('active');
 }
 
-function confirmarAgregarUsuario() {
+async function confirmarAgregarUsuario() {
     const nombre = document.getElementById('nuevo-user-nombre').value.trim();
     const clave  = document.getElementById('nuevo-user-clave').value.trim();
     const errEl  = document.getElementById('nuevo-user-error');
@@ -2323,18 +2364,19 @@ function confirmarAgregarUsuario() {
     if (!nombre) { errEl.textContent = '⚠️ El nombre no puede estar vacío.'; errEl.style.display = 'block'; return; }
     if (!clave)  { errEl.textContent = '⚠️ La clave no puede estar vacía.'; errEl.style.display = 'block'; return; }
 
-    const db = getUsuariosDB();
+    const db = await getUsuariosDB();
     if ([...ACTORS_AND_CREW, ...db.map(u => u.name)].includes(nombre)) {
         errEl.textContent = '⚠️ Ya existe un usuario con ese nombre.';
         errEl.style.display = 'block';
         return;
     }
 
-    db.push({ name: nombre, clave, isAdmin: false });
-    saveUsuariosDB(db);
+    const newU = { name: nombre, clave, isAdmin: false };
+    db.push(newU);
+    await fbSaveUsuario(newU);
+    localStorage.setItem(USERS_KEY, JSON.stringify(db));
     cerrarModalAgregarUsuario();
     renderUsuariosAdminList();
-    // Refrescar dropdown de login
     const userSelect = document.getElementById('login-user-select');
     if (userSelect) {
         userSelect.innerHTML = '<option value="" disabled selected>Selecciona quién eres...</option>';
@@ -2364,7 +2406,12 @@ const ITINERARIO_DEFAULT = [
     { badge: '🔥', titulo: '🎉 Tanda de Baile y Limpieza',      descripcion: 'Fiesta total hasta que se apague la última luz del set.',                                       clase: 'highlight-dance' },
 ];
 
-function getItinerario() {
+async function getItinerario() {
+    const fbItems = await fbGetItinerario();
+    if (fbItems) {
+        localStorage.setItem(ITINERARIO_KEY, JSON.stringify(fbItems));
+        return fbItems;
+    }
     try {
         const stored = JSON.parse(localStorage.getItem(ITINERARIO_KEY));
         if (Array.isArray(stored) && stored.length > 0) return stored;
@@ -2372,15 +2419,16 @@ function getItinerario() {
     return ITINERARIO_DEFAULT.map(i => ({ ...i }));
 }
 
-function saveItinerario(items) {
+async function saveItinerario(items) {
+    await fbSaveItinerario(items);
     localStorage.setItem(ITINERARIO_KEY, JSON.stringify(items));
 }
 
 // Renderiza el timeline en la página principal a partir del storage
-function renderTimelineFromStorage() {
+async function renderTimelineFromStorage() {
     const container = document.querySelector('#timeline-section .timeline-container');
     if (!container) return;
-    const items = getItinerario();
+    const items = await getItinerario();
     container.innerHTML = items.map(item => `
         <div class="timeline-item ${escapeHTML(item.clase || '')}">
             <div class="timeline-badge">${escapeHTML(item.badge)}</div>
@@ -2393,10 +2441,10 @@ function renderTimelineFromStorage() {
 }
 
 // Renderiza la lista editable del itinerario en el panel admin
-function renderItinerarioAdminList() {
+async function renderItinerarioAdminList() {
     const container = document.getElementById('itinerario-admin-list');
     if (!container) return;
-    const items = getItinerario();
+    const items = await getItinerario();
     container.innerHTML = '';
 
     items.forEach((item, idx) => {
@@ -2420,26 +2468,26 @@ function renderItinerarioAdminList() {
             <textarea class="itin-desc-input foto-edit-input" style="resize:vertical;min-height:52px;margin-top:.3rem;" placeholder="Descripción" data-field="descripcion">${escapeHTML(item.descripcion)}</textarea>
         `;
 
-        row.querySelector('.itin-save-btn').addEventListener('click', () => {
+        row.querySelector('.itin-save-btn').addEventListener('click', async () => {
             const badge = row.querySelector('[data-field="badge"]').value.trim();
             const titulo = row.querySelector('[data-field="titulo"]').value.trim();
             const descripcion = row.querySelector('[data-field="descripcion"]').value.trim();
             const clase = row.querySelector('[data-field="clase"]').value;
             if (!titulo) { alert('El título no puede estar vacío.'); return; }
-            const all = getItinerario();
+            const all = await getItinerario();
             all[idx] = { badge, titulo, descripcion, clase };
-            saveItinerario(all);
+            await saveItinerario(all);
             renderTimelineFromStorage();
             const btn = row.querySelector('.itin-save-btn');
             btn.textContent = '✅'; setTimeout(() => { btn.textContent = '💾'; }, 1600);
         });
 
-        row.querySelector('.itin-delete-btn').addEventListener('click', () => {
+        row.querySelector('.itin-delete-btn').addEventListener('click', async () => {
             if (items.length <= 1) return;
             if (!confirm('¿Eliminar este ítem del itinerario?')) return;
-            const all = getItinerario();
+            const all = await getItinerario();
             all.splice(idx, 1);
-            saveItinerario(all);
+            await saveItinerario(all);
             renderItinerarioAdminList();
             renderTimelineFromStorage();
         });
@@ -2448,10 +2496,10 @@ function renderItinerarioAdminList() {
     });
 }
 
-function agregarItemItinerario() {
-    const all = getItinerario();
+async function agregarItemItinerario() {
+    const all = await getItinerario();
     all.push({ badge: '★', titulo: 'Nuevo momento', descripcion: 'Descripción del momento.', clase: '' });
-    saveItinerario(all);
+    await saveItinerario(all);
     renderItinerarioAdminList();
     renderTimelineFromStorage();
 }
@@ -2468,3 +2516,16 @@ function escapeHTML(str) {
         }[tag] || tag)
     );
 }
+
+// Exponer funciones globales para los onclick del HTML (requerido con type="module")
+Object.assign(window, {
+    goToStep, unlockNextStep, validateAndNext, toggleAcompaniantes,
+    resetWizardAndCloseModal, ternaWizardNext, ternaWizardPrev,
+    toggleAccord, toggleSubTab, renderAdminPanel,
+    startEditFromCambiarDatos, renderCambiarDatosPage,
+    openPersonajeModal, guardarEdicionPersonaje,
+    guardarClave, toggleAdminFlag, eliminarUsuario,
+    abrirModalAgregarUsuario, cerrarModalAgregarUsuario, confirmarAgregarUsuario,
+    agregarItemItinerario, handleFotoUpload, deleteFoto,
+    setTernasMode, escapeHTML
+});

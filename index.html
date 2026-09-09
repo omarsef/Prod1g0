@@ -1099,39 +1099,6 @@
         </div>
     </div>
 
-    <script src="script.js"></script>
-    <!-- Conexión con Firebase y Firestore Database -->
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-  import { getFirestore, collection, addDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-  // Tus credenciales de Firebase
-  const firebaseConfig = {
-    apiKey: "AIzaSyDrKwVwHtTh0KbuPplCSpq0GvBDU0HtgMI",
-    authDomain: "fiesta-prodigo-2026.firebaseapp.com",
-    projectId: "fiesta-prodigo-2026",
-    storageBucket: "fiesta-prodigo-2026.firebasestorage.app",
-    messagingSenderId: "404912982263",
-    appId: "1:404912982263:web:56fe4d3f485b8513c0abf2"
-  };
-
-  // Inicializar Firebase
-  const app = initializeApp(firebaseConfig);
-  const db = getFirestore(app);
-
-  // Función lista para guardar interacciones de tus usuarios
-  window.guardarInteraccion = async function(nombre, mensaje) {
-    try {
-      const docRef = await addDoc(collection(db, "interacciones"), {
-        usuario: nombre,
-        texto: mensaje,
-        fecha: new Date()
-      });
-      console.log("¡Interacción guardada con éxito en Firebase ID:", docRef.id);
-    } catch (e) {
-      console.error("Error al guardar en la base de datos:", e);
-    }
-  };
-</script>
+    <script type="module" src="script.js"></script>
 </body>
 </html>
