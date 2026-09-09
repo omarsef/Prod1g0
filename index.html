@@ -190,13 +190,15 @@
                     </div>
 
                     <!-- Consigna de Regalos Absurdos -->
-                    <div class="gift-banner" id="consigna-regalo" style="margin-top:2rem;">
-                        <div class="gift-icon">🎁⚡</div>
+                    <div class="gift-banner gift-banner-alerta" id="consigna-regalo" style="margin-top:2rem;">
+                        <div class="gift-icon">🎁</div>
                         <div class="gift-text">
                             <h3>¡CONSIGNA OBLIGATORIA PARA CADA INVITADO!</h3>
                             <p>
-                                Cada uno debe traer a la fiesta <strong>un objeto absurdo, insólito o que le sobre en su casa</strong> envuelto para regalo (un adorno raro, un cable viejo, una taza sin asa, un manual viejo... lo que sea).
-                                Estos objetos serán los <strong>galardones oficiales</strong> que se entregarán en la Ceremonia de Premiación a los ganadores de cada terna. ¡Nadie sabrá qué le tocará!
+                                Cada uno debe traer a la fiesta <strong>un objeto absurdo, insólito o que le sobre en su casa</strong> envuelto para regalo (un adorno raro, una taza sin asa, un manual viejo... lo que sea).
+                            </p>
+                            <p class="gift-alerta">
+                                🚫 SIN ESE REGALO NO SE PODRÁ INGRESAR
                             </p>
                         </div>
                     </div>
@@ -617,6 +619,33 @@
                             <div class="input-group">
                                 <label for="terna-10">Describe la escena, día o momento épico del rodaje que merece este premio *</label>
                                 <textarea id="terna-10" name="terna10" rows="3" placeholder="Ej: La toma nocturna de lluvia donde todos terminamos festejando / La escena de la cena familiar..."></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Terna 11 — PREMIO PROD1G0 DE PLATINO ✨ -->
+                        <div class="terna-box terna-platino" id="terna-step-11">
+                            <div class="terna-platino-header">
+                                <div class="platino-crown">✨</div>
+                                <div class="platino-title-block">
+                                    <span class="terna-badge terna-badge-platino">PREMIO ESPECIAL</span>
+                                    <h3 class="platino-title">PROD1G0 DE PLATINO</h3>
+                                    <p class="platino-subtitle">El máximo reconocimiento del proyecto.<br>¿Quién se llevó el corazón del rodaje?</p>
+                                </div>
+                                <div class="platino-crown">✨</div>
+                            </div>
+                            <div class="grid-2" style="margin-top:1.5rem;">
+                                <div class="input-group">
+                                    <label class="score-label label-platino-2pts">👑 1er Nominado (2 Puntos) *</label>
+                                    <select name="terna11_voto1" class="actor-select select-platino">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
+                                <div class="input-group">
+                                    <label class="score-label label-platino-1pt">⭐ 2do Nominado (1 Punto) *</label>
+                                    <select name="terna11_voto2" class="actor-select select-platino">
+                                        <option value="" disabled selected>Selecciona una persona...</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

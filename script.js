@@ -132,18 +132,19 @@ const ACTORS_AND_CREW = [
     "Vecino 1 (Julian)",
 ];
 
-// Metadatos de las 10 Ternas
+// Metadatos de las 11 Ternas
 const TERNAS_CONFIG = [
-    { id: "terna1", title: "Terna 1: Actor más responsable (sabía la letra)", isPerson: true },
-    { id: "terna2", title: "Terna 2: Menos responsable (nunca sabía la letra)", isPerson: true },
-    { id: "terna3", title: "Terna 3: Repitió más veces una toma", isPerson: true },
-    { id: "terna4", title: "Terna 4: Pasó por todos los roles", isPerson: true },
-    { id: "terna5", title: "Terna 5: Revelación del set", isPerson: true },
-    { id: "terna6", title: "Terna 6: Siempre se quiere ir temprano", isPerson: true },
-    { id: "terna7", title: "Terna 7: Peor Artista", isPerson: true },
-    { id: "terna8", title: "Terna 8: Mejor actor", isPerson: true },
-    { id: "terna9", title: "Terna 9: Mejor actriz", isPerson: true },
-    { id: "terna10", title: "Terna 10: Mejor momento del proyecto", isPerson: false }
+    { id: "terna1",  title: "Terna 1: Actor más responsable (sabía la letra)", isPerson: true },
+    { id: "terna2",  title: "Terna 2: Menos responsable (nunca sabía la letra)", isPerson: true },
+    { id: "terna3",  title: "Terna 3: Repitió más veces una toma", isPerson: true },
+    { id: "terna4",  title: "Terna 4: Pasó por todos los roles", isPerson: true },
+    { id: "terna5",  title: "Terna 5: Revelación del set", isPerson: true },
+    { id: "terna6",  title: "Terna 6: Siempre se quiere ir temprano", isPerson: true },
+    { id: "terna7",  title: "Terna 7: Peor Artista", isPerson: true },
+    { id: "terna8",  title: "Terna 8: Mejor actor", isPerson: true },
+    { id: "terna9",  title: "Terna 9: Mejor actriz", isPerson: true },
+    { id: "terna10", title: "Terna 10: Mejor momento del proyecto", isPerson: false },
+    { id: "terna11", title: "✨ PROD1G0 DE PLATINO — Máximo reconocimiento del proyecto", isPerson: true, isPlatino: true }
 ];
 
 let currentStep = 0;
@@ -427,6 +428,11 @@ function prefillFormWithExisting(data) {
     // Terna 10
     const t10 = document.getElementById('terna-10');
     if (t10) t10.value = data.terna10 || '';
+    // Terna 11 Platino
+    const p1 = document.querySelector('select[name="terna11_voto1"]');
+    const p2 = document.querySelector('select[name="terna11_voto2"]');
+    if (p1) p1.value = data.terna11_voto1 || '';
+    if (p2) p2.value = data.terna11_voto2 || '';
 
     // Paso 3 - Cultura
     const movies   = document.getElementById('fav-movies');
@@ -538,7 +544,7 @@ function validateAndNext(currentPage) {
     }
 
     if (currentPage === 3) {
-        // Paso 3: Ternas 1-9 (voto1 y voto2) + Terna 10
+        // Paso 3: Ternas 1-9 (voto1 y voto2) + Terna 10 + Terna 11 Platino
         for (let i = 1; i <= 9; i++) {
             const v1 = document.querySelector(`select[name="terna${i}_voto1"]`);
             const v2 = document.querySelector(`select[name="terna${i}_voto2"]`);
@@ -547,6 +553,11 @@ function validateAndNext(currentPage) {
         }
         const t10 = document.getElementById('terna-10');
         if (!t10 || !t10.value.trim()) missing.push('Terna 10 — Mejor momento');
+        // Terna 11 Platino
+        const p1 = document.querySelector('select[name="terna11_voto1"]');
+        const p2 = document.querySelector('select[name="terna11_voto2"]');
+        if (!p1 || !p1.value) missing.push('✨ Prod1g0 de Platino — 1er nominado');
+        if (!p2 || !p2.value) missing.push('✨ Prod1g0 de Platino — 2do nominado');
     }
 
     if (currentPage === 4) {
@@ -717,6 +728,8 @@ function initGuestForm() {
             terna9_voto1: formData.get('terna9_voto1') || '',
             terna9_voto2: formData.get('terna9_voto2') || '',
             terna10: g('terna10'),
+            terna11_voto1: formData.get('terna11_voto1') || '',
+            terna11_voto2: formData.get('terna11_voto2') || '',
 
             favMovies:    g('favMovies'),
             favActors:    g('favActors'),
@@ -1259,11 +1272,11 @@ function showTernaStep(n) {
     if (active) active.style.display = 'block';
 
     // Actualizar barra y label
-    const pct = Math.round((n / 10) * 100);
+    const pct = Math.round((n / 11) * 100);
     const bar = document.getElementById('terna-wizard-bar');
     const lbl = document.getElementById('terna-wizard-label');
     if (bar) bar.style.width = pct + '%';
-    if (lbl) lbl.textContent = `Terna ${n} de 10`;
+    if (lbl) lbl.textContent = n === 11 ? '✨ Premio Prod1g0 de Platino' : `Terna ${n} de 10`;
 
     // Botón anterior: ocultar en terna 1
     const prevBtn = document.getElementById('btn-terna-prev');
@@ -1271,7 +1284,7 @@ function showTernaStep(n) {
 
     // Botón siguiente: cambiar texto en última terna
     const nextBtn = document.getElementById('btn-terna-next');
-    if (nextBtn) nextBtn.textContent = n === 10 ? 'Finalizar votación ✓' : 'Siguiente terna ➔';
+    if (nextBtn) nextBtn.textContent = n === 11 ? '✨ Finalizar y enviar ✓' : 'Siguiente terna ➔';
 
     // Limpiar error
     const err = document.getElementById('terna-step-error');
@@ -1283,13 +1296,21 @@ function ternaWizardNext() {
     // Validar la terna actual
     let missing = [];
     if (currentTernaStep <= 9) {
+        // Ternas 1-9: dos selects de persona
         const v1 = document.querySelector(`select[name="terna${currentTernaStep}_voto1"]`);
         const v2 = document.querySelector(`select[name="terna${currentTernaStep}_voto2"]`);
         if (!v1 || !v1.value) missing.push('1er Nominado');
         if (!v2 || !v2.value) missing.push('2do Nominado');
-    } else {
+    } else if (currentTernaStep === 10) {
+        // Terna 10: texto libre
         const t10 = document.getElementById('terna-10');
         if (!t10 || !t10.value.trim()) missing.push('Descripción del mejor momento');
+    } else if (currentTernaStep === 11) {
+        // Terna 11 Platino: dos selects de persona
+        const p1 = document.querySelector('select[name="terna11_voto1"]');
+        const p2 = document.querySelector('select[name="terna11_voto2"]');
+        if (!p1 || !p1.value) missing.push('1er Nominado al Platino');
+        if (!p2 || !p2.value) missing.push('2do Nominado al Platino');
     }
 
     if (missing.length > 0) {
@@ -1301,7 +1322,7 @@ function ternaWizardNext() {
     }
     if (err) err.style.display = 'none';
 
-    if (currentTernaStep < 10) {
+    if (currentTernaStep < 11) {
         showTernaStep(currentTernaStep + 1);
     } else {
         // Terminó todas las ternas → avanzar al paso 4 (Cultura)

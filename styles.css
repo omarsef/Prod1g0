@@ -600,6 +600,20 @@ body {
     text-decoration-color: var(--gold-primary);
 }
 
+.gift-banner-alerta {
+    border-color: #f87171;
+    background: linear-gradient(135deg, rgba(200, 30, 30, 0.2), rgba(106, 27, 154, 0.15));
+}
+
+.gift-alerta {
+    margin-top: .7rem !important;
+    font-size: 1.05rem !important;
+    font-weight: 800 !important;
+    color: #f87171 !important;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+
 /* ==========================================================
    CRONOGRAMA & SECCIONES DE LA FIESTA
    ========================================================== */
@@ -3245,4 +3259,106 @@ textarea:focus {
     height: 1.1rem;
     accent-color: var(--gold-primary);
     cursor: pointer;
+}
+
+/* ================================================================
+   TERNA PLATINO — Premio Prod1g0 de Platino ✨
+   ================================================================ */
+.terna-platino {
+    background: linear-gradient(135deg, #1a1505 0%, #2a1f00 50%, #1a1505 100%);
+    border: 2px solid #e5a93c !important;
+    box-shadow: 0 0 30px rgba(229,169,60,.25), inset 0 0 60px rgba(229,169,60,.05);
+    position: relative;
+    overflow: hidden;
+}
+.terna-platino::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 40px,
+        rgba(229,169,60,.03) 40px,
+        rgba(229,169,60,.03) 80px
+    );
+    pointer-events: none;
+}
+.terna-platino-header {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.2rem;
+    padding: 1.5rem 1rem 0;
+    text-align: center;
+}
+.platino-crown {
+    font-size: 2.2rem;
+    animation: platino-glow 2s ease-in-out infinite alternate;
+}
+@keyframes platino-glow {
+    from { filter: drop-shadow(0 0 4px #e5a93c); opacity: .8; }
+    to   { filter: drop-shadow(0 0 14px #ffe066); opacity: 1; }
+}
+.platino-title-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .4rem;
+}
+.terna-badge-platino {
+    background: linear-gradient(90deg, #b8860b, #e5a93c, #ffd700, #e5a93c, #b8860b) !important;
+    background-size: 200% !important;
+    animation: shimmer 3s linear infinite;
+    color: #1a1505 !important;
+    font-weight: 900 !important;
+    letter-spacing: .12em;
+    font-size: .72rem !important;
+    padding: .3rem .9rem !important;
+}
+@keyframes shimmer {
+    0%   { background-position: 200% center; }
+    100% { background-position: -200% center; }
+}
+.platino-title {
+    font-family: 'Cinzel', serif;
+    font-size: 1.6rem;
+    font-weight: 900;
+    background: linear-gradient(90deg, #b8860b, #ffd700, #e5a93c, #ffd700, #b8860b);
+    background-size: 200%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: shimmer 3s linear infinite;
+    margin: 0;
+    letter-spacing: .08em;
+}
+.platino-subtitle {
+    color: #c9a227;
+    font-size: .88rem;
+    margin: 0;
+    line-height: 1.5;
+}
+.label-platino-2pts {
+    color: #ffd700 !important;
+    font-weight: 700;
+    font-size: .92rem;
+}
+.label-platino-1pt {
+    color: #e5a93c !important;
+    font-weight: 700;
+    font-size: .92rem;
+}
+.select-platino {
+    background: #0d0d0d !important;
+    border-color: #e5a93c !important;
+    color: #ffffff !important;
+}
+.select-platino option {
+    background: #1a1505;
+    color: #ffffff;
+}
+.select-platino:focus {
+    box-shadow: 0 0 0 3px rgba(229,169,60,.3) !important;
+    outline: none;
 }
