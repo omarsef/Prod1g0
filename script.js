@@ -229,6 +229,10 @@ function initLoginSystem() {
         if (confirm('¿Deseas cerrar la sesión actual?')) {
             sessionStorage.removeItem(SESSION_USER_KEY);
             loggedUser = null;
+            // Limpiar formulario para que no queden datos del usuario anterior
+            const surveyForm = document.getElementById('wrap-survey-form');
+            if (surveyForm) surveyForm.reset();
+            populateActorDropdowns();
             document.getElementById('main-app-container').style.display = 'none';
             document.getElementById('initial-login-screen').style.display = 'flex';
             document.getElementById('initial-login-form').reset();
@@ -311,6 +315,10 @@ async function applyUserSession(user) {
             showPreviousDataModal(existing, editCount);
         }
     } else {
+        // Usuario nuevo — limpiar cualquier dato previo del formulario
+        const surveyForm = document.getElementById('wrap-survey-form');
+        if (surveyForm) surveyForm.reset();
+        populateActorDropdowns();
         if (heroStartBtn) heroStartBtn.style.display = '';
         userHasCompleted = false;
         maxAllowedStep = 0;
