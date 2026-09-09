@@ -1443,6 +1443,9 @@ async function renderAdminPanel() {
     // Acordeón Asistencia & Colores
     renderAsistenciaColoresTabla(data);
 
+    // Acordeón Ranking Global
+    renderRankingGlobal(data);
+
     // Acordeón Itinerario
     renderItinerarioAdminList();
 
@@ -1953,6 +1956,245 @@ function renderAsistenciaColoresTabla(data) {
     container.innerHTML = html;
 }
 
+
+
+
+// ----------------------------------------------------------
+// RANKING GLOBAL — Suma de puntos de todas las ternas
+// ----------------------------------------------------------
+function renderRankingGlobal(data) {
+    const container = document.getElementById('ranking-global-container');
+    if (!container) return;
+
+    if (data.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin votos aún.</p>';
+        return;
+    }
+
+    // Acumular puntos de todas las ternas 1-9 (voto1=2pts, voto2=1pt)
+    const scores = {};
+    for (let i = 1; i <= 9; i++) {
+        data.forEach(item => {
+            const v1 = item[`terna${i}_voto1`];
+            const v2 = item[`terna${i}_voto2`];
+            if (v1) {
+                if (!scores[v1]) scores[v1] = { pts: 0, primeros: 0, segundos: 0, ternas: [] };
+                scores[v1].pts += 2;
+                scores[v1].primeros++;
+                if (!scores[v1].ternas.includes(i)) scores[v1].ternas.push(i);
+            }
+            if (v2) {
+                if (!scores[v2]) scores[v2] = { pts: 0, primeros: 0, segundos: 0, ternas: [] };
+                scores[v2].pts += 1;
+                scores[v2].segundos++;
+                if (!scores[v2].ternas.includes(i)) scores[v2].ternas.push(i);
+            }
+        });
+    }
+
+    const sorted = Object.entries(scores)
+        .sort((a, b) => b[1].pts - a[1].pts || b[1].primeros - a[1].primeros);
+
+    if (sorted.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin votos aún.</p>';
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    let html = `<div class="ranking-global-list">`;
+
+    sorted.forEach(([name, stat], idx) => {
+        const medal  = medals[idx] || `<span style="color:var(--text-muted);font-weight:700;">#${idx+1}</span>`;
+        const isTop3 = idx < 3;
+        html += `
+            <div class="ranking-row ${isTop3 ? 'ranking-top3' : ''}">
+                <div class="ranking-pos">${medal}</div>
+                <div class="ranking-name">${escapeHTML(name)}</div>
+                <div class="ranking-pts">
+                    <span class="ranking-pts-num">${stat.pts}</span>
+                    <span class="ranking-pts-label">pts</span>
+                </div>
+                <div class="ranking-detail">
+                    <span title="Votos de 2 pts">👑 ${stat.primeros}</span>
+                    <span title="Votos de 1 pt" style="margin-left:.6rem;">⭐ ${stat.segundos}</span>
+                    <span style="margin-left:.6rem;color:var(--text-muted);font-size:.78rem;">
+                        Ternas: ${stat.ternas.sort((a,b)=>a-b).map(t=>'T'+t).join(', ')}
+                    </span>
+                </div>
+            </div>`;
+    });
+
+    html += `</div>`;
+    container.innerHTML = html;
+}
+
+// ----------------------------------------------------------
+// IMPRIMIR — Genera ventana de impresión con secciones seleccionadas
+// ----------------------------------------------------------
+function abrirVistaPreviaImpresion() {
+    const data = getStoredData();
+    if (data.length === 0) {
+        alert('No hay datos para imprimir.');
+        return;
+    }
+
+    const opts = {
+        ganadores: document.getElementById('print-opt-ganadores')?.checked,
+        ranking:   document.getElementById('print-opt-ranking')?.checked,
+        descargos: document.getElementById('print-opt-descargos')?.checked,
+        gratitud:  document.getElementById('print-opt-gratitud')?.checked,
+        colores:   document.getElementById('print-opt-colores')?.checked,
+        cultura:   document.getElementById('print-opt-cultura')?.checked,
+    };
+
+    const colorEmoji = { ROJO: '🔴', AMARILLO: '🟡', VERDE: '🟢' };
+
+    let html = `<!DOCTYPE html><html lang="es"><head>
+        <meta charset="UTF-8">
+        <title>Prod1g0 2026 — Reporte de la Noche</title>
+        <style>
+            body { font-family: Arial, sans-serif; color: #111; padding: 2rem; max-width: 900px; margin: 0 auto; }
+            h1 { text-align:center; font-size: 1.8rem; border-bottom: 3px solid #e5a93c; padding-bottom: .5rem; margin-bottom: 2rem; }
+            h2 { font-size: 1.2rem; background: #f3f4f6; padding: .5rem 1rem; border-left: 4px solid #e5a93c; margin: 2rem 0 1rem; }
+            table { width:100%; border-collapse:collapse; margin-bottom:1.5rem; }
+            th { background:#1a1a2e; color:#e5a93c; padding:.5rem .8rem; text-align:left; font-size:.85rem; }
+            td { padding:.45rem .8rem; border-bottom:1px solid #e5e7eb; font-size:.88rem; vertical-align:top; }
+            tr:nth-child(even) td { background:#f9fafb; }
+            .medal { font-size:1.3rem; }
+            .pts { font-weight:700; color:#e5a93c; font-size:1.1rem; }
+            .winner-row td { background:#fffbeb !important; font-weight:600; }
+            .quote { font-style:italic; color:#374151; }
+            @media print {
+                body { padding: .5rem; }
+                button { display:none; }
+                h2 { break-before: avoid; }
+            }
+        </style>
+    </head><body>
+    <h1>🎬 PROD1G0 2026 — Reporte de la Noche</h1>
+    <p style="text-align:center;color:#6b7280;margin-top:-1rem;margin-bottom:2rem;">
+        Generado el ${new Date().toLocaleDateString('es-AR', {day:'2-digit',month:'long',year:'numeric'})} · ${data.length} participantes
+    </p>`;
+
+    // ── GANADORES POR TERNA ─────────────────────────────────────────────
+    if (opts.ganadores) {
+        html += `<h2>🏆 Ganadores por Terna</h2>
+        <table><thead><tr><th>Terna</th><th>🥇 Ganador (1°)</th><th>Pts</th><th>🥈 Subcampeón (2°)</th><th>Pts</th></tr></thead><tbody>`;
+
+        TERNAS_CONFIG.forEach(terna => {
+            if (!terna.isPerson) return;
+            const scores = {};
+            data.forEach(item => {
+                const v1 = item[`${terna.id}_voto1`];
+                const v2 = item[`${terna.id}_voto2`];
+                if (v1) { if (!scores[v1]) scores[v1]=0; scores[v1]+=2; }
+                if (v2) { if (!scores[v2]) scores[v2]=0; scores[v2]+=1; }
+            });
+            const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+            const g1 = sorted[0] || ['—', 0];
+            const g2 = sorted[1] || ['—', 0];
+            html += `<tr class="winner-row">
+                <td>${escapeHTML(terna.title)}</td>
+                <td>👑 ${escapeHTML(g1[0])}</td><td class="pts">${g1[1]}</td>
+                <td>⭐ ${escapeHTML(g2[0])}</td><td class="pts">${g2[1]}</td>
+            </tr>`;
+        });
+        // Terna 10
+        const t10moments = data.filter(d => d.terna10);
+        if (t10moments.length > 0) {
+            html += `<tr><td colspan="5"><strong>Terna 10 — Mejores momentos:</strong><br>`;
+            t10moments.forEach(m => { html += `<span class="quote">"${escapeHTML(m.terna10)}"</span> <small>— ${escapeHTML(m.guestName)}</small><br>`; });
+            html += `</td></tr>`;
+        }
+        html += `</tbody></table>`;
+    }
+
+    // ── RANKING GLOBAL ──────────────────────────────────────────────────
+    if (opts.ranking) {
+        const scores = {};
+        for (let i = 1; i <= 9; i++) {
+            data.forEach(item => {
+                const v1 = item[`terna${i}_voto1`];
+                const v2 = item[`terna${i}_voto2`];
+                if (v1) { if (!scores[v1]) scores[v1]=0; scores[v1]+=2; }
+                if (v2) { if (!scores[v2]) scores[v2]=0; scores[v2]+=1; }
+            });
+        }
+        const sorted = Object.entries(scores).sort((a,b)=>b[1]-a[1]);
+        const medals = ['🥇','🥈','🥉'];
+        html += `<h2>🥇 Ranking Global — Más votados (todas las ternas)</h2>
+        <table><thead><tr><th>#</th><th>Nombre</th><th>Puntos totales</th></tr></thead><tbody>`;
+        sorted.forEach(([name, pts], idx) => {
+            html += `<tr ${idx<3?'class="winner-row"':''}>
+                <td class="medal">${medals[idx]||'#'+(idx+1)}</td>
+                <td>${escapeHTML(name)}</td>
+                <td class="pts">${pts} pts</td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // ── DESCARGOS ───────────────────────────────────────────────────────
+    if (opts.descargos) {
+        html += `<h2>🗯️ Descargos</h2><table><thead><tr><th>Participante</th><th>Descargo</th></tr></thead><tbody>`;
+        data.filter(d => d.descargo).forEach(item => {
+            html += `<tr><td><strong>${escapeHTML(item.guestName)}</strong></td><td class="quote">"${escapeHTML(item.descargo)}"</td></tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // ── GRATITUDES ──────────────────────────────────────────────────────
+    if (opts.gratitud) {
+        html += `<h2>💖 Gratitudes</h2><table><thead><tr><th>Participante</th><th>Gratitud</th></tr></thead><tbody>`;
+        data.filter(d => d.gratitud).forEach(item => {
+            html += `<tr><td><strong>${escapeHTML(item.guestName)}</strong></td><td class="quote">"${escapeHTML(item.gratitud)}"</td></tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // ── COLORES ─────────────────────────────────────────────────────────
+    if (opts.colores) {
+        html += `<h2>🎨 Lista de Nombres y Colores</h2>
+        <table><thead><tr><th>Participante</th><th>Color</th><th>Asistencia</th><th>Acompañantes</th></tr></thead><tbody>`;
+        data.forEach(item => {
+            const ce = colorEmoji[item.colorEvento] || '';
+            const acomp = Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0
+                ? item.coloresAcompaniantes.map(a => `${colorEmoji[a.color]||''} ${escapeHTML(a.nombre)}`).join(', ')
+                : (item.nombresAcompaniantes || '—');
+            html += `<tr>
+                <td><strong>${escapeHTML(item.guestName)}</strong></td>
+                <td>${ce} <strong>${escapeHTML(item.colorEvento||'—')}</strong></td>
+                <td>${item.asistencia === 'ACOMPAÑADO' ? `👥 Acomp. (${item.cantAcompaniantes})` : '🧍 Solo/a'}</td>
+                <td><small>${acomp}</small></td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // ── CULTURA & MÚSICA ────────────────────────────────────────────────
+    if (opts.cultura) {
+        html += `<h2>🎬 Gustos Culturales y Música</h2>
+        <table><thead><tr><th>Participante</th><th>Películas</th><th>Actores</th><th>Música</th></tr></thead><tbody>`;
+        data.forEach(item => {
+            html += `<tr>
+                <td><strong>${escapeHTML(item.guestName)}</strong></td>
+                <td><small>${escapeHTML(item.favMovies||'—')}</small></td>
+                <td><small>${escapeHTML(item.favActors||'—')}</small></td>
+                <td><small>${escapeHTML(item.favMusic||'—')}</small></td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    html += `<p style="text-align:center;color:#9ca3af;font-size:.8rem;margin-top:3rem;border-top:1px solid #e5e7eb;padding-top:1rem;">
+        FIESTA PROD1G0 2026 · Producción integral de Omar Sef
+    </p></body></html>`;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => win.print(), 600);
+}
 
 
 // ----------------------------------------------------------
@@ -2535,5 +2777,6 @@ Object.assign(window, {
     guardarClave, toggleAdminFlag, eliminarUsuario,
     abrirModalAgregarUsuario, cerrarModalAgregarUsuario, confirmarAgregarUsuario,
     agregarItemItinerario, handleFotoUpload, deleteFoto,
-    setTernasMode, escapeHTML
+    setTernasMode, escapeHTML,
+    abrirVistaPreviaImpresion
 });

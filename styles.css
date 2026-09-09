@@ -3164,3 +3164,85 @@ textarea:focus {
     margin: .2rem .2rem .2rem 0;
     white-space: nowrap;
 }
+
+/* ================================================================
+   RANKING GLOBAL
+   ================================================================ */
+.ranking-global-list {
+    display: flex;
+    flex-direction: column;
+    gap: .6rem;
+    padding: .5rem 0;
+}
+.ranking-row {
+    display: grid;
+    grid-template-columns: 2.5rem 1fr auto auto;
+    align-items: center;
+    gap: .8rem;
+    padding: .7rem 1rem;
+    background: var(--surface-card);
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+.ranking-row.ranking-top3 {
+    border-color: var(--gold-primary);
+    background: rgba(229,169,60,.07);
+}
+.ranking-pos {
+    font-size: 1.5rem;
+    text-align: center;
+}
+.ranking-name {
+    font-weight: 600;
+    font-size: .95rem;
+}
+.ranking-pts {
+    text-align: right;
+    white-space: nowrap;
+}
+.ranking-pts-num {
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--gold-primary);
+}
+.ranking-pts-label {
+    font-size: .75rem;
+    color: var(--text-muted);
+    margin-left: .2rem;
+}
+.ranking-detail {
+    font-size: .82rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    grid-column: 2 / -1;
+}
+
+/* ================================================================
+   OPCIONES DE IMPRESIÓN
+   ================================================================ */
+.print-options-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .8rem;
+}
+.print-option-label {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .7rem 1rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: .9rem;
+    transition: border-color .2s;
+}
+.print-option-label:hover {
+    border-color: var(--gold-primary);
+}
+.print-option-label input[type="checkbox"] {
+    width: 1.1rem;
+    height: 1.1rem;
+    accent-color: var(--gold-primary);
+    cursor: pointer;
+}

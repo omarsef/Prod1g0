@@ -932,6 +932,61 @@
                     </div>
                 </div>
 
+                <!-- SECCIÓN: RANKING GLOBAL -->
+                <div class="accord-section" id="accord-ranking">
+                    <button class="accord-btn" onclick="toggleAccord('accord-ranking')">
+                        <span class="accord-icon">🥇</span>
+                        <span class="accord-title">RANKING GLOBAL — Más votados sumando todas las ternas</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div id="ranking-global-container"></div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: IMPRIMIR -->
+                <div class="accord-section" id="accord-imprimir">
+                    <button class="accord-btn" onclick="toggleAccord('accord-imprimir')">
+                        <span class="accord-icon">🖨️</span>
+                        <span class="accord-title">IMPRIMIR — Reportes para la noche</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <p style="color:var(--text-muted);margin-bottom:1.2rem;font-size:.9rem;">
+                            Seleccioná qué querés incluir en el reporte imprimible y hacé clic en Imprimir.
+                        </p>
+                        <div class="print-options-grid">
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-ganadores" checked>
+                                🏆 Ganadores de cada terna
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-ranking" checked>
+                                🥇 Ranking global de más votados
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-descargos" checked>
+                                🗯️ Lista de descargos
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-gratitud" checked>
+                                💖 Lista de gratitudes
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-colores" checked>
+                                🎨 Lista de nombres y colores
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-cultura">
+                                🎬 Gustos culturales y música
+                            </label>
+                        </div>
+                        <button type="button" class="btn-primary" style="margin-top:1.5rem;width:100%;font-size:1rem;padding:.8rem;" onclick="abrirVistaPreviaImpresion()">
+                            🖨️ Generar y abrir vista de impresión
+                        </button>
+                    </div>
+                </div>
+
                 <!-- SECCIÓN 6: GESTIÓN DE DATOS -->
                 <div class="accord-section accord-section-danger" id="accord-gestion">
                     <button class="accord-btn accord-btn-danger" onclick="toggleAccord('accord-gestion')">
