@@ -72,8 +72,8 @@
                 <button id="btn-logout-app" class="btn-logout-link" title="Cerrar Sesión">Cerrar Sesión</button>
             </div>
 
-            <!-- Cuenta regresiva en el header -->
-            <div id="header-countdown" class="header-countdown"></div>
+            <!-- Cuenta regresiva en el header (oculta hasta que admin la habilite) -->
+            <div id="header-countdown" class="header-countdown" style="display:none;"></div>
 
             <!-- NAV MODO WIZARD (solo durante la carga inicial) -->
             <nav id="main-nav" class="nav" style="display: none;">
@@ -92,8 +92,8 @@
 
         <main class="main-content">
 
-            <!-- Cuenta regresiva grande (debajo del header, dentro del main) -->
-            <div id="main-countdown-banner" class="countdown-banner"></div>
+            <!-- Cuenta regresiva grande (oculta hasta que admin la habilite) -->
+            <div id="main-countdown-banner" class="countdown-banner" style="display:none;"></div>
 
             <!-- Barra de Progreso de Navegación entre Páginas -->
             <div class="wizard-progress-container">
@@ -796,6 +796,17 @@
                             <p id="cambiar-datos-info" class="cambiar-datos-info"></p>
                             <div id="cambiar-datos-actions" class="cambiar-datos-actions"></div>
                         </div>
+                        <!-- Votación de fecha del evento -->
+                        <div class="cambiar-datos-card" id="cambiar-fecha-card" style="margin-top:1.2rem;display:none;">
+                            <div class="cambiar-datos-icon">📅</div>
+                            <h2>¿Cuándo preferís la fiesta?</h2>
+                            <p id="cambiar-fecha-info" class="cambiar-datos-info"></p>
+                            <div class="cambiar-datos-actions">
+                                <button type="button" class="btn-primary" onclick="abrirCambioFechaVoto()">
+                                    📅 Cambiar mi voto de fecha
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -863,7 +874,7 @@
                         <span class="accord-title">ENCUESTA — Votaciones de Ternas</span>
                         <span class="accord-arrow">▼</span>
                     </button>
-                    <div class="accord-body">
+                    <div class="accord-body" style="display:none;">
                         <!-- Sub-secciones internas -->
                         <div class="accord-sub-tabs">
                             <button class="sub-tab-btn active" data-sub="sub-general" onclick="toggleSubTab(this,'accord-encuesta')">📊 Votación General (Ranking)</button>
@@ -970,6 +981,79 @@
                     </button>
                     <div class="accord-body" style="display:none;">
                         <div id="platino-admin-container"></div>
+                    </div>
+                </div>
+
+                <!-- SECCIÓN: FECHAS & COUNTDOWN -->
+                <div class="accord-section" id="accord-fechas">
+                    <button class="accord-btn" onclick="toggleAccord('accord-fechas')">
+                        <span class="accord-icon">📅</span>
+                        <span class="accord-title">FECHAS — Votación de fecha y cuenta regresiva</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+
+                        <!-- Toggle votación de fechas -->
+                        <div class="admin-box" style="margin-bottom:1rem;">
+                            <h3 class="box-title">🗳️ Votación de fecha del evento</h3>
+                            <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:.8rem;">
+                                Cuando está habilitada, al iniciar sesión por primera vez se le pregunta al invitado en qué fecha prefiere la fiesta.
+                            </p>
+                            <label class="fecha-toggle-label">
+                                <input type="checkbox" id="toggle-fecha-vote-enabled">
+                                <span>Habilitar votación de fecha</span>
+                            </label>
+                        </div>
+
+                        <!-- Fechas a proponer -->
+                        <div class="admin-box" style="margin-bottom:1rem;">
+                            <h3 class="box-title">📆 Fechas a proponer al invitado</h3>
+                            <div id="admin-fechas-list" style="margin-bottom:.8rem;"></div>
+                            <div style="display:flex;gap:.5rem;margin-top:.5rem;">
+                                <input type="text" id="admin-nueva-fecha-input" class="foto-edit-input" placeholder="ej: 24/10/2026" style="flex:1;">
+                                <button type="button" class="btn-primary" style="padding:.4rem 1rem;font-size:.85rem;" onclick="adminAgregarFecha()">+ Agregar</button>
+                            </div>
+                        </div>
+
+                        <!-- Toggle countdown -->
+                        <div class="admin-box" style="margin-bottom:1rem;">
+                            <h3 class="box-title">⏱️ Cuenta regresiva</h3>
+                            <p style="color:var(--text-muted);font-size:.85rem;margin-bottom:.5rem;">
+                                Mostrará el contador en el header y en la pantalla principal apuntando a la fecha del evento.
+                            </p>
+                            <label class="fecha-toggle-label">
+                                <input type="checkbox" id="toggle-countdown-enabled">
+                                <span>Mostrar cuenta regresiva</span>
+                            </label>
+
+                            <!-- Usar fecha más votada -->
+                            <div style="margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--border-color);">
+                                <label class="fecha-toggle-label">
+                                    <input type="checkbox" id="toggle-usar-fecha-votada" onchange="onToggleUsarFechaVotada()">
+                                    <span>Usar la fecha más votada automáticamente</span>
+                                </label>
+                                <!-- Aviso de empate o fecha ganadora -->
+                                <div id="fecha-ganadora-info" style="margin-top:.6rem;font-size:.85rem;"></div>
+                                <!-- Selector manual (visible solo en empate) -->
+                                <div id="fecha-manual-wrap" style="display:none;margin-top:.6rem;">
+                                    <label style="color:var(--text-muted);font-size:.83rem;display:block;margin-bottom:.3rem;">⚠️ Empate — elegí la fecha manualmente:</label>
+                                    <select id="admin-fecha-ganadora-select" class="foto-edit-input" style="max-width:260px;"></select>
+                                </div>
+                            </div>
+
+                            <div id="admin-countdown-date-wrap" style="margin-top:.6rem;">
+                                <label style="color:var(--text-muted);font-size:.83rem;display:block;margin-bottom:.3rem;">Fecha del evento (para el contador)</label>
+                                <input type="datetime-local" id="admin-countdown-date-input" class="foto-edit-input" style="max-width:260px;">
+                            </div>
+                        </div>
+
+                        <button type="button" class="btn-primary" style="width:100%;margin-bottom:1.5rem;" onclick="adminGuardarConfigFechas()">💾 Guardar configuración</button>
+
+                        <!-- Resultados de votación -->
+                        <div class="admin-box">
+                            <h3 class="box-title">📊 Resultados de votación de fechas</h3>
+                            <div id="admin-fechas-results"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -1177,6 +1261,21 @@
                 <button id="btn-prev-edit" class="btn-prev-edit">✏️ Sí, quiero modificar mis datos</button>
                 <button id="btn-prev-keep" class="btn-prev-keep">✅ No, mantener mis datos actuales</button>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL: VOTACIÓN DE FECHA DEL EVENTO -->
+    <div id="fecha-vote-modal" class="modal">
+        <div class="modal-content fecha-vote-modal-content">
+            <div class="fecha-vote-header">
+                <p class="fecha-vote-bienvenida">BIENVENIDOS A LA WRAP PARTY</p>
+                <h2 class="fecha-vote-title">Prod1g0</h2>
+                <p class="fecha-vote-subtitle">¿En qué fecha preferís que hagamos la fiesta?<br>Podés elegir una o más opciones.</p>
+            </div>
+            <div id="fecha-vote-opciones" class="fecha-vote-opciones"></div>
+            <p class="fecha-vote-hint" id="fecha-vote-hint" style="display:none;">⚠️ Tenés que seleccionar al menos una fecha.</p>
+            <p class="fecha-vote-remainingInfo" id="fecha-vote-remaining"></p>
+            <button class="btn-primary fecha-vote-btn" id="btn-fecha-vote-confirm">✅ Confirmar mi elección</button>
         </div>
     </div>
 

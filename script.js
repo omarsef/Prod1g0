@@ -93,6 +93,18 @@ async function fbSaveItinerario(items) {
         return true;
     } catch(e) { return false; }
 }
+async function fbGetSettings() {
+    try {
+        const snap = await getDoc(doc(_fbDb, 'config', 'settings'));
+        return snap.exists() ? snap.data() : null;
+    } catch(e) { return null; }
+}
+async function fbSaveSettings(data) {
+    try {
+        await setDoc(doc(_fbDb, 'config', 'settings'), data);
+        return true;
+    } catch(e) { return false; }
+}
 // ==========================================================
 
 const STORAGE_KEY = 'prodigo_2026_responses_v4';
@@ -315,6 +327,8 @@ async function applyUserSession(user) {
             goToStep(0);
             showPreviousDataModal(existing, editCount);
         }
+        // Mostrar modal de fecha si nunca votó (usuario que ya completó el wizard)
+        maybeShowFechaVoteModal(user, existing);
     } else {
         // Usuario nuevo — limpiar cualquier dato previo del formulario
         const surveyForm = document.getElementById('wrap-survey-form');
@@ -330,6 +344,8 @@ async function applyUserSession(user) {
         setNavMode('wizard');
         updateNavLockState();
         goToStep(0);
+        // Mostrar modal de fecha para usuario nuevo que nunca votó
+        maybeShowFechaVoteModal(user, null);
     }
 }
 
@@ -784,7 +800,7 @@ function initGuestForm() {
     });
 }
 
-function resetWizardAndCloseModal() {
+async function resetWizardAndCloseModal() {
     const successModal = document.getElementById('success-modal');
     successModal.classList.remove('active');
     document.getElementById('wrap-survey-form').reset();
@@ -806,6 +822,13 @@ function resetWizardAndCloseModal() {
 
     if (loggedUser) refreshSessionState();
     goToStep(0);
+
+    // Mostrar modal de fecha si nunca votó (usuario que acaba de completar el wizard)
+    if (loggedUser && !loggedUser.isAdmin) {
+        const freshResponse = await fbGetResponse(loggedUser.name)
+            || getStoredData().find(d => d.guestName === loggedUser.name);
+        maybeShowFechaVoteModal(loggedUser, freshResponse || null);
+    }
 }
 
 // Refresca el estado de la sesión activa (contador de intentos, bloqueo, pre-relleno)
@@ -847,26 +870,25 @@ function safeFileName(guestName) {
 }
 
 // ----------------------------------------------------------
-// CUENTA REGRESIVA — 31 de Octubre de 2026, 21:00 hs
+// CUENTA REGRESIVA — condicional según config de admin
 // ----------------------------------------------------------
-function initCountdown() {
-    const TARGET_DATE = new Date('2026-10-31T21:00:00');
+let _countdownInterval = null;
 
-    function formatUnit(n) {
-        return String(n).padStart(2, '0');
-    }
+function startCountdownDisplay(targetDateStr) {
+    if (_countdownInterval) clearInterval(_countdownInterval);
+    const TARGET_DATE = new Date(targetDateStr);
+
+    function formatUnit(n) { return String(n).padStart(2, '0'); }
 
     function buildCountdownHTML(diff) {
-        if (diff <= 0) {
-            return `<span class="cd-label">🎉 ¡HOY ES LA FIESTA!</span>`;
-        }
+        if (diff <= 0) return `<span class="cd-label">🎉 ¡HOY ES LA FIESTA!</span>`;
         const days    = Math.floor(diff / (1000 * 60 * 60 * 24));
         const hours   = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
         const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
         const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
+        const label   = TARGET_DATE.toLocaleDateString('es-AR', { day:'2-digit', month:'short', year:'numeric' }).toUpperCase();
         return `
-            <span class="cd-label">🎬 31 OCT 2026 — 21:00 HS</span>
+            <span class="cd-label">🎬 ${label} — ${String(TARGET_DATE.getHours()).padStart(2,'0')}:${String(TARGET_DATE.getMinutes()).padStart(2,'0')} HS</span>
             <span class="cd-units">
                 <span class="cd-block"><span class="cd-num">${formatUnit(days)}</span><span class="cd-sub">días</span></span>
                 <span class="cd-sep">:</span>
@@ -880,19 +902,432 @@ function initCountdown() {
     }
 
     function tick() {
-        const now  = new Date();
-        const diff = TARGET_DATE - now;
-        const html = buildCountdownHTML(diff);
-
+        const html = buildCountdownHTML(TARGET_DATE - new Date());
         const headerEl = document.getElementById('header-countdown');
         const bannerEl = document.getElementById('main-countdown-banner');
-
         if (headerEl) headerEl.innerHTML = html;
         if (bannerEl) bannerEl.innerHTML = html;
     }
-
     tick();
-    setInterval(tick, 1000);
+    _countdownInterval = setInterval(tick, 1000);
+}
+
+function stopCountdownDisplay() {
+    if (_countdownInterval) { clearInterval(_countdownInterval); _countdownInterval = null; }
+    const headerEl = document.getElementById('header-countdown');
+    const bannerEl = document.getElementById('main-countdown-banner');
+    if (headerEl) { headerEl.innerHTML = ''; headerEl.style.display = 'none'; }
+    if (bannerEl) { bannerEl.innerHTML = ''; bannerEl.style.display = 'none'; }
+}
+
+async function initCountdown() {
+    const settings = await fbGetSettings();
+    if (settings && settings.countdownEnabled && settings.countdownDate) {
+        const headerEl = document.getElementById('header-countdown');
+        const bannerEl = document.getElementById('main-countdown-banner');
+        if (headerEl) headerEl.style.display = '';
+        if (bannerEl) bannerEl.style.display = '';
+        startCountdownDisplay(settings.countdownDate);
+    } else {
+        stopCountdownDisplay();
+    }
+}
+
+// ----------------------------------------------------------
+// VOTACIÓN DE FECHA DEL EVENTO
+// ----------------------------------------------------------
+const MAX_FECHA_EDITS = 3; // máximo de veces que puede cambiar su voto de fecha
+const DEFAULT_FECHAS  = ['10/10/2026', '17/10/2026', '31/10/2026'];
+
+// Muestra el modal de votación de fecha si corresponde
+async function maybeShowFechaVoteModal(user, existingResponse) {
+    const settings = await fbGetSettings();
+
+    // Si la votación fue explícitamente deshabilitada por el admin, no mostrar
+    if (settings && settings.fechaVoteEnabled === false) return;
+
+    // Si ya votó alguna vez, no mostrar automáticamente al entrar
+    const yaVoto = existingResponse && Array.isArray(existingResponse.fechasVotadas) && existingResponse.fechasVotadas.length > 0;
+    if (yaVoto) return;
+
+    // Mostrar con las fechas configuradas (o las por defecto si no hay config)
+    const fechasDisponibles = (settings && settings.fechasOpciones && settings.fechasOpciones.length > 0)
+        ? settings.fechasOpciones
+        : DEFAULT_FECHAS;
+
+    openFechaVoteModal(fechasDisponibles, existingResponse, user);
+}
+
+function openFechaVoteModal(fechasDisponibles, existingResponse, user) {
+    const modal    = document.getElementById('fecha-vote-modal');
+    const optsDiv  = document.getElementById('fecha-vote-opciones');
+    const hintEl   = document.getElementById('fecha-vote-hint');
+    const remEl    = document.getElementById('fecha-vote-remaining');
+    const confirmBtn = document.getElementById('btn-fecha-vote-confirm');
+
+    const yaVotadas = existingResponse && Array.isArray(existingResponse.fechasVotadas)
+        ? existingResponse.fechasVotadas : [];
+    const fechaVotoCount = existingResponse ? (existingResponse.fechaVotoCount || 0) : 0;
+    const remaining = Math.max(0, MAX_FECHA_EDITS - fechaVotoCount);
+
+    // Renderizar opciones
+    optsDiv.innerHTML = '';
+    fechasDisponibles.forEach(fecha => {
+        const label = document.createElement('label');
+        label.className = 'fecha-vote-option' + (yaVotadas.includes(fecha) ? ' selected' : '');
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = fecha;
+        cb.checked = yaVotadas.includes(fecha);
+        cb.addEventListener('change', () => {
+            label.classList.toggle('selected', cb.checked);
+            hintEl.style.display = 'none';
+        });
+        const txt = document.createElement('span');
+        txt.className = 'fecha-vote-option-text';
+        txt.textContent = '📅 ' + fecha;
+        label.appendChild(cb);
+        label.appendChild(txt);
+        // Click en el label completo
+        label.addEventListener('click', (e) => {
+            if (e.target !== cb) {
+                cb.checked = !cb.checked;
+                label.classList.toggle('selected', cb.checked);
+                hintEl.style.display = 'none';
+            }
+        });
+        optsDiv.appendChild(label);
+    });
+
+    remEl.textContent = remaining > 0
+        ? `Podés cambiar tu elección ${remaining} vez${remaining !== 1 ? 'ces' : ''} más.`
+        : 'No tenés más cambios disponibles para la votación de fecha.';
+
+    hintEl.style.display = 'none';
+
+    // Si no quedan cambios, deshabilitar
+    if (remaining <= 0) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '🔒 Sin cambios disponibles';
+    } else {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = '✅ Confirmar mi elección';
+    }
+
+    // Guardar referencia al handler anterior para poder removerlo
+    const newConfirmBtn = confirmBtn.cloneNode(true);
+    confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+    newConfirmBtn.addEventListener('click', async () => {
+        const seleccionadas = Array.from(optsDiv.querySelectorAll('input[type="checkbox"]:checked')).map(cb => cb.value);
+        if (seleccionadas.length === 0) {
+            hintEl.style.display = 'block';
+            return;
+        }
+        // Guardar en Firestore dentro del response del usuario
+        const updatedCount = fechaVotoCount + 1;
+        const updatedResponse = {
+            ...(existingResponse || { guestName: user.name, timestamp: new Date().toISOString() }),
+            fechasVotadas: seleccionadas,
+            fechaVotoCount: updatedCount
+        };
+        await fbSaveResponse(updatedResponse);
+
+        // Actualizar localStorage
+        const allLocal = getStoredData();
+        const idx = allLocal.findIndex(d => d.guestName === user.name);
+        if (idx >= 0) { allLocal[idx] = { ...allLocal[idx], fechasVotadas: seleccionadas, fechaVotoCount: updatedCount }; }
+        else { allLocal.push(updatedResponse); }
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(allLocal));
+
+        modal.classList.remove('active');
+    });
+
+    modal.classList.add('active');
+}
+
+// Abre el modal de cambio de fecha desde el paso 7 (Cambiar Votación)
+async function abrirCambioFechaVoto() {
+    if (!loggedUser) return;
+    const settings = await fbGetSettings();
+    if (!settings || !settings.fechaVoteEnabled) {
+        alert('La votación de fechas no está habilitada en este momento.');
+        return;
+    }
+    const existing = await fbGetResponse(loggedUser.name)
+        || getStoredData().find(d => d.guestName === loggedUser.name);
+    const fechasDisponibles = (settings.fechasOpciones && settings.fechasOpciones.length > 0)
+        ? settings.fechasOpciones
+        : DEFAULT_FECHAS;
+    openFechaVoteModal(fechasDisponibles, existing, loggedUser);
+}
+
+// ----------------------------------------------------------
+// PANEL ADMIN — CONFIGURACIÓN DE FECHAS
+// ----------------------------------------------------------
+async function renderAdminFechas(allData) {
+    const settings = await fbGetSettings() || {};
+
+    // Toggles
+    const toggleVote = document.getElementById('toggle-fecha-vote-enabled');
+    const toggleCD   = document.getElementById('toggle-countdown-enabled');
+    const cdInput    = document.getElementById('admin-countdown-date-input');
+    if (toggleVote) toggleVote.checked = !!settings.fechaVoteEnabled;
+    if (toggleCD)   toggleCD.checked   = !!settings.countdownEnabled;
+    if (cdInput && settings.countdownDate) {
+        // datetime-local espera formato YYYY-MM-DDTHH:MM
+        cdInput.value = settings.countdownDate.slice(0, 16);
+    }
+
+    // Lista de fechas configuradas
+    const fechasList = document.getElementById('admin-fechas-list');
+    if (fechasList) {
+        const fechas = settings.fechasOpciones || DEFAULT_FECHAS;
+        renderAdminFechasList(fechas);
+    }
+
+    // Toggle "usar fecha más votada"
+    const toggleUsarVotada = document.getElementById('toggle-usar-fecha-votada');
+    if (toggleUsarVotada) {
+        toggleUsarVotada.checked = !!settings.usarFechaVotada;
+        // Render del estado inicial
+        if (settings.usarFechaVotada) renderFechaGanadoraInfo(allData, settings);
+    }
+
+    // Resultados de votación
+    renderFechasResults(allData, settings);
+}
+
+function renderAdminFechasList(fechas) {
+    const container = document.getElementById('admin-fechas-list');
+    if (!container) return;
+    if (fechas.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;">Sin fechas configuradas.</p>';
+        return;
+    }
+    container.innerHTML = '';
+    fechas.forEach((f, idx) => {
+        const row = document.createElement('div');
+        row.className = 'admin-fecha-item';
+        row.innerHTML = `<span>📅 ${escapeHTML(f)}</span><button onclick="adminEliminarFecha(${idx})" title="Eliminar">🗑️</button>`;
+        container.appendChild(row);
+    });
+}
+
+async function adminAgregarFecha() {
+    const input = document.getElementById('admin-nueva-fecha-input');
+    if (!input || !input.value.trim()) return;
+    const settings = await fbGetSettings() || {};
+    const fechas = settings.fechasOpciones ? [...settings.fechasOpciones] : [...DEFAULT_FECHAS];
+    const nueva = input.value.trim();
+    if (fechas.includes(nueva)) { alert('Esa fecha ya está en la lista.'); return; }
+    fechas.push(nueva);
+    await fbSaveSettings({ ...settings, fechasOpciones: fechas });
+    input.value = '';
+    renderAdminFechasList(fechas);
+}
+
+async function adminEliminarFecha(idx) {
+    const settings = await fbGetSettings() || {};
+    const fechas = settings.fechasOpciones ? [...settings.fechasOpciones] : [...DEFAULT_FECHAS];
+    if (fechas.length <= 1) { alert('Debe quedar al menos una fecha.'); return; }
+    fechas.splice(idx, 1);
+    await fbSaveSettings({ ...settings, fechasOpciones: fechas });
+    renderAdminFechasList(fechas);
+}
+
+// Calcula la fecha más votada. Devuelve { ganadora, empate, candidatas }
+function calcFechaGanadora(allData) {
+    const counts = {};
+    allData.forEach(item => {
+        if (Array.isArray(item.fechasVotadas)) {
+            item.fechasVotadas.forEach(f => { counts[f] = (counts[f] || 0) + 1; });
+        }
+    });
+    if (Object.keys(counts).length === 0) return { ganadora: null, empate: false, candidatas: [] };
+    const maxVotos = Math.max(...Object.values(counts));
+    const candidatas = Object.entries(counts)
+        .filter(([, v]) => v === maxVotos)
+        .map(([f]) => f);
+    return {
+        ganadora: candidatas.length === 1 ? candidatas[0] : null,
+        empate:   candidatas.length > 1,
+        candidatas,
+        maxVotos
+    };
+}
+
+// Renderiza el info-box de fecha ganadora/empate en el admin
+async function renderFechaGanadoraInfo(allData, settings) {
+    const infoEl      = document.getElementById('fecha-ganadora-info');
+    const manualWrap  = document.getElementById('fecha-manual-wrap');
+    const manualSel   = document.getElementById('admin-fecha-ganadora-select');
+    const cdWrap      = document.getElementById('admin-countdown-date-wrap');
+    if (!infoEl) return;
+
+    const usarVotada = document.getElementById('toggle-usar-fecha-votada')?.checked;
+
+    if (!usarVotada) {
+        infoEl.innerHTML = '';
+        if (manualWrap) manualWrap.style.display = 'none';
+        if (cdWrap) cdWrap.style.display = '';
+        return;
+    }
+
+    const { ganadora, empate, candidatas } = calcFechaGanadora(allData);
+
+    if (!ganadora && !empate) {
+        infoEl.innerHTML = '<span style="color:var(--text-muted);">Sin votos de fecha todavía — ingresá la fecha manualmente.</span>';
+        if (manualWrap) manualWrap.style.display = 'none';
+        if (cdWrap) cdWrap.style.display = '';
+        return;
+    }
+
+    if (empate) {
+        infoEl.innerHTML = `<span style="color:#f59e0b;">⚠️ Empate entre ${candidatas.length} fechas (${candidatas.join(', ')}). Elegí manualmente cuál usar.</span>`;
+        if (manualWrap) manualWrap.style.display = '';
+        if (cdWrap) cdWrap.style.display = 'none';
+        // Poblar el selector con las candidatas empatadas
+        if (manualSel) {
+            manualSel.innerHTML = candidatas.map(f => `<option value="${escapeHTML(f)}">${escapeHTML(f)}</option>`).join('');
+            // Pre-seleccionar la que estaba guardada si aplica
+            if (settings && settings.countdownFechaLabel && candidatas.includes(settings.countdownFechaLabel)) {
+                manualSel.value = settings.countdownFechaLabel;
+            }
+        }
+    } else {
+        infoEl.innerHTML = `<span style="color:#4ade80;">✅ Fecha ganadora: <strong>${escapeHTML(ganadora)}</strong> — se usará para la cuenta regresiva.</span>`;
+        if (manualWrap) manualWrap.style.display = 'none';
+        if (cdWrap) cdWrap.style.display = 'none';
+    }
+}
+
+// Handler del toggle "usar fecha más votada"
+async function onToggleUsarFechaVotada() {
+    const allData  = await fbGetAllResponses() || getStoredData();
+    const settings = await fbGetSettings() || {};
+    renderFechaGanadoraInfo(allData, settings);
+    // Mostrar/ocultar el input manual de fecha
+    const cdWrap = document.getElementById('admin-countdown-date-wrap');
+    const usarVotada = document.getElementById('toggle-usar-fecha-votada')?.checked;
+    if (cdWrap) cdWrap.style.display = usarVotada ? 'none' : '';
+}
+
+async function adminGuardarConfigFechas() {
+    const toggleVote    = document.getElementById('toggle-fecha-vote-enabled');
+    const toggleCD      = document.getElementById('toggle-countdown-enabled');
+    const toggleVotada  = document.getElementById('toggle-usar-fecha-votada');
+    const cdInput       = document.getElementById('admin-countdown-date-input');
+    const manualSel     = document.getElementById('admin-fecha-ganadora-select');
+    const settings      = await fbGetSettings() || {};
+    const allData       = await fbGetAllResponses() || getStoredData();
+
+    const usarVotada = toggleVotada ? toggleVotada.checked : !!settings.usarFechaVotada;
+
+    // Determinar la fecha a usar para el countdown
+    let countdownDate    = settings.countdownDate || '';
+    let countdownFechaLabel = settings.countdownFechaLabel || '';
+
+    if (usarVotada) {
+        const { ganadora, empate, candidatas } = calcFechaGanadora(allData);
+        if (empate) {
+            // Admin eligió manualmente entre las empatadas
+            const elegida = manualSel ? manualSel.value : candidatas[0];
+            countdownFechaLabel = elegida;
+            // No modificamos countdownDate — debe ingresarse manualmente
+            // (la fecha de texto no tiene hora, el admin debe completar el datetime)
+            if (cdInput && cdInput.value) countdownDate = cdInput.value;
+            else {
+                alert('⚠️ Hay un empate. Elegiste "' + elegida + '" pero también tenés que ingresar la fecha y hora exacta del evento en el campo de arriba.');
+            }
+        } else if (ganadora) {
+            countdownFechaLabel = ganadora;
+            // Intentar parsear la fecha ganadora como datetime (formato dd/mm/yyyy)
+            const parts = ganadora.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (parts) {
+                const iso = `${parts[3]}-${parts[2].padStart(2,'0')}-${parts[1].padStart(2,'0')}T21:00`;
+                countdownDate = iso;
+                if (cdInput) cdInput.value = iso;
+            } else if (cdInput && cdInput.value) {
+                countdownDate = cdInput.value;
+            }
+        } else {
+            // Sin votos — usar el input manual
+            if (cdInput && cdInput.value) countdownDate = cdInput.value;
+        }
+    } else {
+        if (cdInput && cdInput.value) countdownDate = cdInput.value;
+        countdownFechaLabel = '';
+    }
+
+    const updated = {
+        ...settings,
+        fechaVoteEnabled:    toggleVote   ? toggleVote.checked   : !!settings.fechaVoteEnabled,
+        countdownEnabled:    toggleCD     ? toggleCD.checked     : !!settings.countdownEnabled,
+        usarFechaVotada:     usarVotada,
+        countdownDate,
+        countdownFechaLabel,
+    };
+
+    await fbSaveSettings(updated);
+
+    // Aplicar countdown en tiempo real
+    if (updated.countdownEnabled && updated.countdownDate) {
+        const headerEl = document.getElementById('header-countdown');
+        const bannerEl = document.getElementById('main-countdown-banner');
+        if (headerEl) headerEl.style.display = '';
+        if (bannerEl) bannerEl.style.display = '';
+        startCountdownDisplay(updated.countdownDate);
+    } else {
+        stopCountdownDisplay();
+    }
+
+    // Refrescar el info de fecha ganadora
+    renderFechaGanadoraInfo(allData, updated);
+    alert('✅ Configuración guardada.');
+}
+
+function renderFechasResults(allData, settings) {
+    const container = document.getElementById('admin-fechas-results');
+    if (!container) return;
+
+    const counts = {};
+    let totalVoters = 0;
+    allData.forEach(item => {
+        if (Array.isArray(item.fechasVotadas) && item.fechasVotadas.length > 0) {
+            totalVoters++;
+            item.fechasVotadas.forEach(f => {
+                counts[f] = (counts[f] || 0) + 1;
+            });
+        }
+    });
+
+    if (Object.keys(counts).length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;padding:.5rem 0;">Sin votos de fecha aún.</p>';
+        return;
+    }
+
+    const maxCount = Math.max(...Object.values(counts));
+    const sorted   = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+
+    let html = `<p style="color:var(--text-muted);font-size:.82rem;margin-bottom:.8rem;">
+        ${totalVoters} participante${totalVoters !== 1 ? 's' : ''} votaron.
+        (Un participante puede votar más de una fecha)
+    </p>`;
+
+    sorted.forEach(([fecha, count]) => {
+        const pct = maxCount > 0 ? Math.round((count / maxCount) * 100) : 0;
+        html += `
+            <div class="fecha-result-row">
+                <span class="fecha-result-label">📅 ${escapeHTML(fecha)}</span>
+                <div class="fecha-result-bar-wrap">
+                    <div class="fecha-result-bar" style="width:${pct}%"></div>
+                </div>
+                <span class="fecha-result-count">${count} voto${count !== 1 ? 's' : ''}</span>
+            </div>`;
+    });
+
+    container.innerHTML = html;
 }
 
 // ----------------------------------------------------------
@@ -1221,6 +1656,27 @@ async function renderCambiarDatosPage() {
         <button type="button" class="cd-btn-yes" onclick="startEditFromCambiarDatos()">✏️ Sí, quiero modificar mi votación</button>
         <button type="button" class="cd-btn-no" onclick="goToStep(0)">✅ No, mantener mi votación y volver al inicio</button>
     `;
+
+    // Card de votación de fecha
+    const fechaCard = document.getElementById('cambiar-fecha-card');
+    const fechaInfo = document.getElementById('cambiar-fecha-info');
+    if (fechaCard) {
+        const settings = await fbGetSettings();
+        if (settings && settings.fechaVoteEnabled) {
+            fechaCard.style.display = '';
+            const fechaCount = existing.fechaVotoCount || 0;
+            const fechaRem   = Math.max(0, MAX_FECHA_EDITS - fechaCount);
+            const yaVotadas  = Array.isArray(existing.fechasVotadas) ? existing.fechasVotadas : [];
+            if (fechaInfo) {
+                fechaInfo.innerHTML = yaVotadas.length > 0
+                    ? `Tu elección actual: <strong class="highlight-gold">${yaVotadas.join(', ')}</strong>.<br>
+                       Cambios restantes: <strong class="highlight-gold">${fechaRem}</strong>.`
+                    : 'Todavía no votaste por ninguna fecha.';
+            }
+        } else {
+            fechaCard.style.display = 'none';
+        }
+    }
 }
 
 async function startEditFromCambiarDatos() {
@@ -1451,6 +1907,9 @@ async function renderAdminPanel() {
 
     // Acordeón Prod1g0 de Platino
     renderPlatinoAdmin(data);
+
+    // Acordeón Fechas & Countdown
+    renderAdminFechas(data);
 
     // Acordeón Ranking Global
     renderRankingGlobal(data);
@@ -2918,5 +3377,7 @@ Object.assign(window, {
     abrirModalAgregarUsuario, cerrarModalAgregarUsuario, confirmarAgregarUsuario,
     agregarItemItinerario, handleFotoUpload, deleteFoto,
     setTernasMode, escapeHTML,
-    abrirVistaPreviaImpresion
+    abrirVistaPreviaImpresion,
+    adminAgregarFecha, adminEliminarFecha, adminGuardarConfigFechas,
+    abrirCambioFechaVoto, onToggleUsarFechaVotada
 });
