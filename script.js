@@ -920,6 +920,44 @@ function stopCountdownDisplay() {
     if (bannerEl) { bannerEl.innerHTML = ''; bannerEl.style.display = 'none'; }
 }
 
+// Actualiza fecha y hora en la claqueta de la página de inicio
+function updateClapperFecha(countdownDate, countdownFechaLabel) {
+    const fechaEl = document.getElementById('clapper-fecha');
+    const horaEl  = document.getElementById('clapper-hora');
+    if (!fechaEl || !horaEl) return;
+
+    // Si hay una fecha label (ej: "31/10/2026") usarla directamente
+    if (countdownFechaLabel) {
+        fechaEl.textContent = countdownFechaLabel.toUpperCase();
+    } else if (countdownDate) {
+        // Parsear desde el ISO datetime-local (ej: "2026-10-31T21:00")
+        const d = new Date(countdownDate);
+        if (!isNaN(d)) {
+            fechaEl.textContent = d.toLocaleDateString('es-AR', {
+                day: '2-digit', month: 'short', year: 'numeric'
+            }).toUpperCase();
+        } else {
+            fechaEl.textContent = 'A CONFIRMAR';
+        }
+    } else {
+        fechaEl.textContent = 'A CONFIRMAR';
+    }
+
+    // Hora
+    if (countdownDate) {
+        const d = new Date(countdownDate);
+        if (!isNaN(d)) {
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            horaEl.textContent = `${hh}:${mm} HS`;
+        } else {
+            horaEl.textContent = 'A CONFIRMAR';
+        }
+    } else {
+        horaEl.textContent = 'A CONFIRMAR';
+    }
+}
+
 async function initCountdown() {
     const settings = await fbGetSettings();
     if (settings && settings.countdownEnabled && settings.countdownDate) {
@@ -931,6 +969,8 @@ async function initCountdown() {
     } else {
         stopCountdownDisplay();
     }
+    // Siempre actualizar la claqueta con la fecha configurada (aunque el countdown esté off)
+    if (settings) updateClapperFecha(settings.countdownDate || '', settings.countdownFechaLabel || '');
 }
 
 // ----------------------------------------------------------
@@ -1282,8 +1322,9 @@ async function adminGuardarConfigFechas() {
         stopCountdownDisplay();
     }
 
-    // Refrescar el info de fecha ganadora
+    // Refrescar el info de fecha ganadora y la claqueta
     renderFechaGanadoraInfo(allData, updated);
+    updateClapperFecha(updated.countdownDate || '', updated.countdownFechaLabel || '');
     alert('✅ Configuración guardada.');
 }
 
