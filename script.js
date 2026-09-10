@@ -566,6 +566,8 @@ function validateAndNext(currentPage) {
             const v2 = document.querySelector(`select[name="terna${i}_voto2"]`);
             if (!v1 || !v1.value) missing.push(`Terna ${i} — 1er nominado`);
             if (!v2 || !v2.value) missing.push(`Terna ${i} — 2do nominado`);
+            if (v1 && v2 && v1.value && v2.value && v1.value === v2.value)
+                missing.push(`Terna ${i} — el 1er y 2do nominado no pueden ser la misma persona`);
         }
         const t10 = document.getElementById('terna-10');
         if (!t10 || !t10.value.trim()) missing.push('Terna 10 — Mejor momento');
@@ -574,6 +576,8 @@ function validateAndNext(currentPage) {
         const p2 = document.querySelector('select[name="terna11_voto2"]');
         if (!p1 || !p1.value) missing.push('✨ Prod1g0 de Platino — 1er nominado');
         if (!p2 || !p2.value) missing.push('✨ Prod1g0 de Platino — 2do nominado');
+        if (p1 && p2 && p1.value && p2.value && p1.value === p2.value)
+            missing.push('✨ Prod1g0 de Platino — el 1er y 2do nominado no pueden ser la misma persona');
     }
 
     if (currentPage === 4) {
@@ -1802,6 +1806,8 @@ function ternaWizardNext() {
         const v2 = document.querySelector(`select[name="terna${currentTernaStep}_voto2"]`);
         if (!v1 || !v1.value) missing.push('1er Nominado');
         if (!v2 || !v2.value) missing.push('2do Nominado');
+        if (v1 && v2 && v1.value && v2.value && v1.value === v2.value)
+            missing.push('el 1er y 2do Nominado no pueden ser la misma persona');
     } else if (currentTernaStep === 10) {
         // Terna 10: texto libre
         const t10 = document.getElementById('terna-10');
@@ -1812,6 +1818,8 @@ function ternaWizardNext() {
         const p2 = document.querySelector('select[name="terna11_voto2"]');
         if (!p1 || !p1.value) missing.push('1er Nominado al Platino');
         if (!p2 || !p2.value) missing.push('2do Nominado al Platino');
+        if (p1 && p2 && p1.value && p2.value && p1.value === p2.value)
+            missing.push('el 1er y 2do Nominado al Platino no pueden ser la misma persona');
     }
 
     if (missing.length > 0) {
