@@ -3033,13 +3033,17 @@ async function deleteUserData() {
         alert('Seleccioná un usuario primero.');
         return;
     }
-    if (confirm(`⚠️ ¿Estás seguro de que querés borrar TODOS los datos de:\n\n"${userName}"?\n\nSe eliminará su encuesta y su contador de cambios. Esta acción no se puede deshacer.`)) {
+    if (confirm(`⚠️ ¿Estás seguro de que querés borrar TODOS los datos de:\n\n"${userName}"?\n\nSe eliminará su encuesta y su contador de cambios quedará en cero. Esta acción no se puede deshacer.`)) {
         if (confirm(`🔴 SEGUNDA CONFIRMACIÓN: ¿Confirmas el borrado de "${userName}"?`)) {
+            // Borrar de Firestore (incluye editCount, editCountAsistencia y todos los campos)
             await fbDeleteResponse(userName);
+            // Borrar del localStorage global de respuestas
             const data = getStoredData().filter(d => d.guestName !== userName);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            // Borrar caché local del personaje de ese usuario (por si acaso)
+            localStorage.removeItem('prodigo_personaje_edit_' + safeFileName(userName));
             renderAdminPanel();
-            alert(`✅ Datos de "${userName}" eliminados correctamente.`);
+            alert(`✅ Datos de "${userName}" eliminados. Su contador de intentos quedó en cero.`);
         }
     }
 }
