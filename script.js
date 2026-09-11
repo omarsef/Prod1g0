@@ -1981,6 +1981,23 @@ async function renderAdminPanel() {
             sel.appendChild(opt);
         });
     }
+    // Selector resetear contadores — todos los usuarios, hayan cargado datos o no
+    const selReset = document.getElementById('admin-reset-counter-select');
+    if (selReset) {
+        selReset.innerHTML = '<option value="" disabled selected>Selecciona un usuario...</option>';
+        getActiveUserList().forEach(name => {
+            const item = data.find(d => d.guestName === name);
+            const cv = item ? (item.editCount || 0) : 0;
+            const ca = item ? (item.editCountAsistencia || 0) : 0;
+            const opt = document.createElement('option');
+            opt.value = name;
+            opt.textContent = item
+                ? `${name}  [votación: ${cv}/${MAX_EDITS} | asist: ${ca}/${MAX_EDITS_ASIST}]`
+                : `${name}  [sin datos]`;
+            selReset.appendChild(opt);
+        });
+    }
+
     const totalGestion = document.getElementById('stat-total-gestion');
     if (totalGestion) totalGestion.textContent = data.length;
 
@@ -3048,6 +3065,49 @@ async function deleteUserData() {
     }
 }
 
+async function resetContadorUsuario(tipo) {
+    const sel = document.getElementById('admin-reset-counter-select');
+    const userName = sel ? sel.value : '';
+    if (!userName) {
+        alert('Seleccioná un usuario primero.');
+        return;
+    }
+
+    const labels = {
+        votacion:  'los intentos de votación (ternas)',
+        asistencia:'los intentos de asistencia/color',
+        todo:      'todos los contadores (votación y asistencia)'
+    };
+    if (!confirm(`🔄 ¿Resetear ${labels[tipo]} de:\n\n"${userName}"?\n\nSus datos y votos se conservarán intactos.`)) return;
+
+    // Leer el response actual
+    const existing = await fbGetResponse(userName) || getStoredData().find(d => d.guestName === userName);
+    if (!existing) {
+        alert(`No se encontraron datos para "${userName}".`);
+        return;
+    }
+
+    const updated = { ...existing };
+    if (tipo === 'votacion' || tipo === 'todo') {
+        updated.editCount = 0;
+    }
+    if (tipo === 'asistencia' || tipo === 'todo') {
+        updated.editCountAsistencia = 0;
+    }
+
+    // Guardar en Firestore
+    await fbSaveResponse(updated);
+
+    // Actualizar localStorage
+    const allLocal = getStoredData();
+    const idx = allLocal.findIndex(d => d.guestName === userName);
+    if (idx >= 0) allLocal[idx] = updated;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allLocal));
+
+    renderAdminPanel();
+    alert(`✅ Contadores de "${userName}" reseteados correctamente.`);
+}
+
 // ===========================================================
 // HELPERS: Lista activa de usuarios + datos de personaje
 // ===========================================================
@@ -3432,5 +3492,6 @@ Object.assign(window, {
     setTernasMode, escapeHTML,
     abrirVistaPreviaImpresion,
     adminAgregarFecha, adminEliminarFecha, adminGuardarConfigFechas,
-    abrirCambioFechaVoto, onToggleUsarFechaVotada
+    abrirCambioFechaVoto, onToggleUsarFechaVotada,
+    resetContadorUsuario
 });

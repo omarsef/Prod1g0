@@ -1144,6 +1144,27 @@
                                 </button>
                             </div>
                             <div class="admin-box gestion-box">
+                                <h3 class="box-title" style="color:#f59e0b;">🔄 Resetear contadores de un usuario</h3>
+                                <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1rem;">
+                                    Resetea los intentos sin borrar sus datos ni votación.
+                                </p>
+                                <div class="input-group">
+                                    <label>Seleccionar usuario</label>
+                                    <select id="admin-reset-counter-select">
+                                        <option value="" disabled selected>Selecciona un usuario...</option>
+                                    </select>
+                                </div>
+                                <button type="button" class="btn-secondary" style="width:100%;margin-top:.5rem;" onclick="resetContadorUsuario('votacion')">
+                                    🔄 Resetear intentos de votación (ternas)
+                                </button>
+                                <button type="button" class="btn-secondary" style="width:100%;margin-top:.5rem;" onclick="resetContadorUsuario('asistencia')">
+                                    🔄 Resetear intentos de asistencia
+                                </button>
+                                <button type="button" class="btn-secondary" style="width:100%;margin-top:.5rem;" onclick="resetContadorUsuario('todo')">
+                                    🔄 Resetear todos los contadores
+                                </button>
+                            </div>
+                            <div class="admin-box gestion-box">
                                 <h3 class="box-title" style="color:#f87171;">💣 Resetear todo el sistema</h3>
                                 <p style="color:var(--text-secondary);font-size:.9rem;margin-bottom:1rem;">
                                     Borra absolutamente todos los datos. El sitio quedará como nuevo.
