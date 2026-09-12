@@ -87,6 +87,8 @@
                 <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🎭 Personajes</button>
                 <button class="nav-tab-btn site-only-btn" data-step="7" style="display:none;">🔄 Cambiar Votación</button>
                 <button id="btn-open-admin-modal" class="btn-admin-nav" style="display: none;">🔒 Panel Producción</button>
+                <button id="btn-open-grupos-modal" class="btn-admin-nav btn-grupos-nav" style="display: none;">🎨 Panel de Grupos</button>
+                <button id="btn-open-votacion-modal" class="btn-admin-nav btn-votacion-nav" style="display: none;">📋 Votación de USUARIOS</button>
             </nav>
         </header>
 
@@ -1246,6 +1248,101 @@
             </div><!-- fin accordion -->
         </div><!-- fin admin-panel-container -->
     </div><!-- fin admin-panel-modal -->
+
+    <!-- MODAL: PANEL DE GRUPOS -->
+    <div id="grupos-panel-modal" class="modal full-screen-modal">
+        <div class="admin-panel-container">
+            <div class="admin-header">
+                <div class="admin-title">
+                    <h2>🎨 PANEL DE GRUPOS — PROD1G0 2026</h2>
+                    <span class="badge badge-gold">EQUIPOS & RANKING</span>
+                </div>
+                <div class="admin-header-btns">
+                    <button id="btn-close-grupos" class="btn-danger">Cerrar ✕</button>
+                </div>
+            </div>
+
+            <div class="admin-accordion">
+
+                <!-- EQUIPOS POR COLOR -->
+                <div class="accord-section" id="accord-equipos">
+                    <button class="accord-btn" onclick="toggleAccord('accord-equipos')">
+                        <span class="accord-icon">🎨</span>
+                        <span class="accord-title">EQUIPOS — Grupos por color de vestimenta</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div id="grupos-equipos-container"></div>
+                    </div>
+                </div>
+
+                <!-- ASISTENTES & RECAUDACIÓN -->
+                <div class="accord-section" id="accord-asistentes">
+                    <button class="accord-btn" onclick="toggleAccord('accord-asistentes')">
+                        <span class="accord-icon">💰</span>
+                        <span class="accord-title">ASISTENTES & RECAUDACIÓN — Total de personas y aporte</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <div id="grupos-asistentes-container"></div>
+                    </div>
+                </div>
+
+                <!-- ACOMPAÑANTES -->
+                <div class="accord-section" id="accord-acompaniantes">
+                    <button class="accord-btn" onclick="toggleAccord('accord-acompaniantes')">
+                        <span class="accord-icon">👥</span>
+                        <span class="accord-title">ACOMPAÑANTES — Asignación manual de color</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <p style="color:var(--text-muted);font-size:.83rem;margin-bottom:1rem;">
+                            Podés reasignar el color de cualquier acompañante. Esto sobreescribe la asignación aleatoria previa.
+                        </p>
+                        <div id="grupos-acompaniantes-container"></div>
+                    </div>
+                </div>
+
+                <!-- RANKING NETO -->
+                <div class="accord-section" id="accord-ranking-neto">
+                    <button class="accord-btn" onclick="toggleAccord('accord-ranking-neto')">
+                        <span class="accord-icon">🏅</span>
+                        <span class="accord-title">RANKING NETO — Votos positivos menos negativos</span>
+                        <span class="accord-arrow">▼</span>
+                    </button>
+                    <div class="accord-body" style="display:none;">
+                        <p style="color:var(--text-muted);font-size:.83rem;margin-bottom:1rem;">
+                            Se suman todos los votos recibidos en todas las ternas y se restan los votos de las ternas negativas:
+                            <strong>T3</strong> (repitió más tomas), <strong>T6</strong> (se quiere ir temprano), <strong>T7</strong> (peor artista).
+                        </p>
+                        <div id="grupos-ranking-neto-container"></div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div><!-- fin grupos-panel-modal -->
+
+    <!-- MODAL: VOTACIÓN DE USUARIOS -->
+    <div id="votacion-panel-modal" class="modal full-screen-modal">
+        <div class="admin-panel-container">
+            <div class="admin-header">
+                <div class="admin-title">
+                    <h2>📋 VOTACIÓN DE USUARIOS — PROD1G0 2026</h2>
+                    <span class="badge badge-gold">EDICIÓN DE DATOS</span>
+                </div>
+                <div class="admin-header-btns">
+                    <button id="btn-close-votacion" class="btn-danger">Cerrar ✕</button>
+                </div>
+            </div>
+            <div style="padding:1rem 1.5rem 0;">
+                <p style="color:var(--text-muted);font-size:.88rem;margin-bottom:1rem;">
+                    Hacé clic en ✏️ para editar los datos de cualquier usuario. Podés corregir nombres de acompañantes, cambiar color, asistencia y cantidad.
+                </p>
+                <div id="votacion-usuarios-container"></div>
+            </div>
+        </div>
+    </div><!-- fin votacion-panel-modal -->
 
     <!-- MODAL: AGREGAR USUARIO -->
     <div id="modal-agregar-usuario" class="modal">

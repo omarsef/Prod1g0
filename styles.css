@@ -3544,3 +3544,294 @@ textarea:focus {
     font-size: .9rem;
     padding: .1rem .3rem;
 }
+
+/* ==========================================================
+   PANEL DE GRUPOS
+   ========================================================== */
+.btn-grupos-nav {
+    background: linear-gradient(135deg, #1b6b2e, #2d9e47) !important;
+    border-color: #2d9e47 !important;
+}
+.btn-grupos-nav:hover {
+    background: linear-gradient(135deg, #145220, #237a36) !important;
+}
+
+.equipos-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 1.2rem;
+    margin-top: .5rem;
+}
+
+.equipo-card {
+    border-radius: 12px;
+    padding: 1.2rem 1rem;
+    border: 2px solid;
+}
+
+.equipo-card-header {
+    display: flex;
+    align-items: center;
+    gap: .7rem;
+    margin-bottom: .9rem;
+}
+
+.equipo-color-dot {
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.equipo-card-title {
+    font-family: var(--font-heading);
+    font-size: 1.05rem;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.equipo-count-badge {
+    margin-left: auto;
+    font-size: .78rem;
+    padding: .2rem .55rem;
+    border-radius: 20px;
+    font-weight: 700;
+    color: #fff;
+}
+
+.equipo-member-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .4rem;
+}
+
+.equipo-member-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .88rem;
+    color: var(--text-primary);
+}
+
+.equipo-member-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.equipo-member-emoji {
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 1rem;
+    flex-shrink: 0;
+    background: rgba(255,255,255,.08);
+}
+
+/* Ranking Neto */
+.ranking-neto-list {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.ranking-neto-row {
+    display: flex;
+    align-items: center;
+    gap: .8rem;
+    padding: .7rem 1rem;
+    border-radius: 8px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+}
+
+.ranking-neto-row.neto-top3 {
+    border-color: var(--gold-primary);
+    background: rgba(229,169,60,.07);
+}
+
+.ranking-neto-row.neto-negative {
+    border-color: #f87171;
+    background: rgba(248,113,113,.06);
+}
+
+.ranking-neto-pos {
+    font-size: 1.3rem;
+    width: 2rem;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.ranking-neto-name {
+    flex: 1;
+    font-weight: 600;
+    font-size: .95rem;
+}
+
+.ranking-neto-pts {
+    text-align: right;
+    line-height: 1.3;
+    min-width: 80px;
+}
+
+.ranking-neto-pts-num {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.ranking-neto-pts-num.positive { color: #4ade80; }
+.ranking-neto-pts-num.negative { color: #f87171; }
+.ranking-neto-pts-num.zero     { color: var(--text-muted); }
+
+.ranking-neto-detail {
+    font-size: .75rem;
+    color: var(--text-muted);
+}
+
+.equipo-acomp-item {
+    padding-left: 1.6rem;
+    opacity: .85;
+}
+
+.equipo-acomp-indent {
+    color: var(--text-muted);
+    font-size: .9rem;
+    margin-right: .1rem;
+    flex-shrink: 0;
+}
+
+.equipo-acomp-ext-item {
+    opacity: .82;
+}
+
+/* ==========================================================
+   PANEL VOTACIÓN DE USUARIOS
+   ========================================================== */
+.btn-votacion-nav {
+    background: linear-gradient(135deg, #1e3a8a, #3b5fd4) !important;
+    border-color: #3b5fd4 !important;
+}
+.btn-votacion-nav:hover {
+    background: linear-gradient(135deg, #162d6e, #2d4ab0) !important;
+}
+
+.vot-user-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .88rem;
+    margin-bottom: 2rem;
+}
+.vot-user-table th {
+    text-align: left;
+    padding: .5rem .8rem;
+    color: var(--text-muted);
+    font-size: .78rem;
+    font-weight: 600;
+    border-bottom: 2px solid var(--border-color);
+}
+.vot-user-table td {
+    padding: .5rem .8rem;
+    border-bottom: 1px solid var(--border-color);
+    vertical-align: top;
+}
+.vot-user-table tr:hover td {
+    background: rgba(255,255,255,.03);
+}
+
+/* Fila de edición inline */
+.vot-edit-row td {
+    background: rgba(59,95,212,.06) !important;
+    border-bottom: 2px solid #3b5fd4 !important;
+}
+
+.vot-edit-field {
+    background: var(--bg-input, #1e2030);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-primary);
+    padding: .3rem .6rem;
+    font-size: .85rem;
+    width: 100%;
+    box-sizing: border-box;
+}
+.vot-edit-field:focus {
+    outline: none;
+    border-color: #3b5fd4;
+}
+
+.vot-acomp-edit-list {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+    margin-top: .3rem;
+}
+.vot-acomp-edit-row {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+.vot-acomp-edit-row input {
+    flex: 1;
+}
+
+.vot-save-btn {
+    background: var(--gold-primary);
+    color: #000;
+    border: none;
+    border-radius: 6px;
+    padding: .35rem .9rem;
+    font-weight: 700;
+    font-size: .82rem;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.vot-save-btn:hover { background: var(--gold-hover); }
+
+.vot-cancel-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: .35rem .7rem;
+    font-size: .82rem;
+    cursor: pointer;
+}
+.vot-cancel-btn:hover { color: var(--text-primary); }
+
+.vot-edit-trigger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    font-size: 1rem;
+    padding: .2rem .4rem;
+    border-radius: 4px;
+}
+.vot-edit-trigger:hover {
+    color: var(--gold-primary);
+    background: rgba(229,169,60,.1);
+}
+
+.vot-no-data {
+    color: var(--text-muted);
+    font-style: italic;
+    font-size: .82rem;
+}
+
+.vot-color-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    border-radius: 20px;
+    padding: .15rem .55rem;
+    font-size: .8rem;
+    font-weight: 600;
+}

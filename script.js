@@ -273,12 +273,16 @@ async function applyUserSession(user) {
     document.getElementById('header-user-name').innerText = user.name;
     document.getElementById('welcome-user-display').innerText = user.name;
 
-    const adminBadge = document.getElementById('header-admin-badge');
-    const btnAdminNav = document.getElementById('btn-open-admin-modal');
+    const adminBadge   = document.getElementById('header-admin-badge');
+    const btnAdminNav  = document.getElementById('btn-open-admin-modal');
+    const btnGruposNav = document.getElementById('btn-open-grupos-modal');
 
     if (user.isAdmin) {
         adminBadge.style.display = 'inline-block';
         btnAdminNav.style.display = 'inline-block';
+        if (btnGruposNav) btnGruposNav.style.display = 'inline-block';
+        const btnVotacionNav = document.getElementById('btn-open-votacion-modal');
+        if (btnVotacionNav) btnVotacionNav.style.display = 'inline-block';
         maxAllowedStep = 5;
         userHasCompleted = true;
         document.getElementById('main-nav').style.display = 'flex';
@@ -1867,10 +1871,550 @@ function initAdminModal() {
             adminPanelModal.classList.remove('active');
         });
     }
+
+    // Panel de Grupos
+    const btnOpenGrupos  = document.getElementById('btn-open-grupos-modal');
+    const gruposModal    = document.getElementById('grupos-panel-modal');
+    const btnCloseGrupos = document.getElementById('btn-close-grupos');
+
+    if (btnOpenGrupos) {
+        btnOpenGrupos.addEventListener('click', () => {
+            renderGruposPanel();
+            gruposModal.classList.add('active');
+        });
+    }
+    if (btnCloseGrupos) {
+        btnCloseGrupos.addEventListener('click', () => {
+            gruposModal.classList.remove('active');
+        });
+    }
+
+    // Panel Votación de Usuarios
+    const btnOpenVotacion  = document.getElementById('btn-open-votacion-modal');
+    const votacionModal    = document.getElementById('votacion-panel-modal');
+    const btnCloseVotacion = document.getElementById('btn-close-votacion');
+
+    if (btnOpenVotacion) {
+        btnOpenVotacion.addEventListener('click', () => {
+            renderVotacionUsuariosPanel();
+            votacionModal.classList.add('active');
+        });
+    }
+    if (btnCloseVotacion) {
+        btnCloseVotacion.addEventListener('click', () => {
+            votacionModal.classList.remove('active');
+        });
+    }
 }
 
 function initAdminTabs() {
     // El acordeón reemplaza las tabs. Esta función queda vacía por compatibilidad.
+}
+
+// ----------------------------------------------------------
+// PANEL DE GRUPOS — Equipos por color + Ranking Neto
+// ----------------------------------------------------------
+
+// Ternas cuyos votos se RESTAN en el ranking neto
+const TERNAS_NEGATIVAS = new Set(['terna3', 'terna6', 'terna7']);
+
+async function renderGruposPanel() {
+    const data = await fbGetAllResponses() || getStoredData();
+    renderEquipos(data);
+    renderAsistentesRecaudacion(data);
+    renderAcompaniantes(data);
+    renderRankingNeto(data);
+}
+
+async function renderEquipos(data) {
+    const container = document.getElementById('grupos-equipos-container');
+    if (!container) return;
+
+    const colorConfig = {
+        ROJO:     { emoji: '🔴', bg: 'rgba(220,38,38,.1)',  border: '#dc2626', dot: '#dc2626', label: 'EQUIPO ROJO' },
+        VERDE:    { emoji: '🟢', bg: 'rgba(22,163,74,.1)',  border: '#16a34a', dot: '#16a34a', label: 'EQUIPO VERDE' },
+        AMARILLO: { emoji: '🟡', bg: 'rgba(202,138,4,.1)',  border: '#ca8a04', dot: '#ca8a04', label: 'EQUIPO AMARILLO' },
+    };
+
+    // Agrupar titulares por color
+    const grupos = { ROJO: [], VERDE: [], AMARILLO: [], SIN_COLOR: [] };
+    data.forEach(item => {
+        const c = item.colorEvento;
+        if (grupos[c]) grupos[c].push(item);
+        else grupos.SIN_COLOR.push(item);
+    });
+
+    // También incluir usuarios sin datos aún (sin color)
+    const allUsers = getActiveUserList();
+    const usersWithData = new Set(data.map(d => d.guestName));
+    const sinDatos = allUsers.filter(u => !usersWithData.has(u));
+
+    // Construir mapa: color → [ { nombre, anfitrion, mismoColor } ]
+    // para saber qué acompañantes pertenecen a cada color (de TODOS los titulares)
+    const acompPorColor = { ROJO: [], VERDE: [], AMARILLO: [] };
+    data.forEach(item => {
+        if (item.asistencia !== 'ACOMPAÑADO') return;
+        if (!Array.isArray(item.coloresAcompaniantes)) return;
+        item.coloresAcompaniantes.forEach(ac => {
+            if (!ac.color || !acompPorColor[ac.color]) return;
+            acompPorColor[ac.color].push({
+                nombre:     ac.nombre,
+                anfitrion:  item.guestName,
+                mismoColor: item.colorEvento === ac.color
+            });
+        });
+    });
+
+    let html = '<div class="equipos-grid">';
+
+    for (const [color, cfg] of Object.entries(colorConfig)) {
+        const members   = grupos[color] || [];
+        // Acompañantes de OTRO titular que pertenecen a este color
+        const acompExt  = acompPorColor[color].filter(a => !a.mismoColor);
+        const totalEnEquipo = members.length
+            + acompPorColor[color].filter(a => a.mismoColor).length
+            + acompExt.length;
+
+        html += `
+        <div class="equipo-card" style="background:${cfg.bg};border-color:${cfg.border};">
+            <div class="equipo-card-header">
+                <div class="equipo-color-dot" style="background:${cfg.dot};"></div>
+                <span class="equipo-card-title" style="color:${cfg.border};">${cfg.label}</span>
+                <span class="equipo-count-badge" style="background:${cfg.dot};">${totalEnEquipo}</span>
+            </div>
+            <ul class="equipo-member-list">`;
+
+        let hasContent = false;
+
+        // ── Titulares del mismo color + sus acompañantes del mismo color
+        for (const item of members) {
+            hasContent = true;
+            const pdata = await getPersonajeData(item.guestName);
+            const photo = pdata.photo || localStorage.getItem('prodigo_photo_' + safeFileName(item.guestName));
+            const avatar = photo
+                ? `<img class="equipo-member-avatar" src="${photo}" alt="">`
+                : `<span class="equipo-member-emoji" style="color:${pdata.color};">${pdata.emoji}</span>`;
+
+            html += `<li class="equipo-member-item">${avatar}<span>${escapeHTML(item.guestName)}</span></li>`;
+
+            // Acompañantes del mismo color indentados debajo
+            (item.coloresAcompaniantes || [])
+                .filter(ac => ac.color === color)
+                .forEach(ac => {
+                    html += `
+                        <li class="equipo-member-item equipo-acomp-item">
+                            <span class="equipo-acomp-indent">└</span>
+                            <span class="equipo-member-emoji" style="font-size:.85rem;">👥</span>
+                            <span style="font-size:.85rem;color:var(--text-secondary);">${escapeHTML(ac.nombre)}</span>
+                        </li>`;
+                });
+        }
+
+        // ── Acompañantes de otro titular que pertenecen a este color
+        if (acompExt.length > 0) {
+            if (hasContent) {
+                html += `<li style="margin-top:.5rem;border-top:1px dashed rgba(255,255,255,.15);padding-top:.4rem;list-style:none;"></li>`;
+            }
+            acompExt.forEach(a => {
+                html += `
+                    <li class="equipo-member-item equipo-acomp-ext-item">
+                        <span class="equipo-member-emoji" style="font-size:.85rem;">👥</span>
+                        <span style="font-size:.85rem;color:var(--text-secondary);">
+                            ${escapeHTML(a.nombre)}
+                            <span style="color:var(--text-muted);font-size:.75rem;margin-left:.3rem;">
+                                (de ${escapeHTML(a.anfitrion)})
+                            </span>
+                        </span>
+                    </li>`;
+            });
+            hasContent = true;
+        }
+
+        if (!hasContent) {
+            html += `<li style="color:var(--text-muted);font-size:.85rem;font-style:italic;">Sin integrantes aún.</li>`;
+        }
+
+        html += `</ul></div>`;
+    }
+
+    // Sin color asignado
+    if (grupos.SIN_COLOR.length > 0 || sinDatos.length > 0) {
+        const allSin = [
+            ...grupos.SIN_COLOR.map(d => d.guestName),
+            ...sinDatos
+        ];
+        html += `
+        <div class="equipo-card" style="background:rgba(100,100,100,.08);border-color:var(--border-color);">
+            <div class="equipo-card-header">
+                <div class="equipo-color-dot" style="background:var(--text-muted);"></div>
+                <span class="equipo-card-title" style="color:var(--text-muted);">SIN COLOR ASIGNADO</span>
+                <span class="equipo-count-badge" style="background:var(--text-muted);">${allSin.length}</span>
+            </div>
+            <ul class="equipo-member-list">
+                ${allSin.map(name => `<li class="equipo-member-item"><span class="equipo-member-emoji">👤</span><span>${escapeHTML(name)}</span></li>`).join('')}
+            </ul>
+        </div>`;
+    }
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// Genera una clave única para identificar a cada persona (titular o acompañante)
+function _pagoKey(nombre, anfitrion) {
+    return anfitrion ? `acomp__${_fbKey(anfitrion)}__${_fbKey(nombre)}` : `titular__${_fbKey(nombre)}`;
+}
+
+async function renderAsistentesRecaudacion(data) {
+    const container = document.getElementById('grupos-asistentes-container');
+    if (!container) return;
+
+    const APORTE = 20000;
+    const colorEmoji = { ROJO: '🔴', VERDE: '🟢', AMARILLO: '🟡' };
+    const colorBdr   = { ROJO: '#dc2626', VERDE: '#16a34a', AMARILLO: '#ca8a04' };
+    const colorBg    = { ROJO: 'rgba(220,38,38,.12)', VERDE: 'rgba(22,163,74,.12)', AMARILLO: 'rgba(202,138,4,.12)' };
+
+    // Leer estado de pagos guardado
+    const settings = await fbGetSettings() || {};
+    const pagos = settings.pagos || {};   // { key: true/false }
+
+    // Armar lista completa
+    const allUsers      = getActiveUserList();
+    const usersWithData = new Set(data.map(d => d.guestName));
+    const filas = [];
+
+    data.forEach(item => {
+        filas.push({ nombre: item.guestName, color: item.colorEvento || '', tipo: 'titular', anfitrion: null });
+        if (item.asistencia === 'ACOMPAÑADO') {
+            if (Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0) {
+                item.coloresAcompaniantes.forEach(ac =>
+                    filas.push({ nombre: ac.nombre, color: ac.color || '', tipo: 'acompañante', anfitrion: item.guestName }));
+            } else if (item.nombresAcompaniantes) {
+                (item.nombresAcompaniantes || '').split(',').map(n => n.trim()).filter(Boolean).forEach(nombre =>
+                    filas.push({ nombre, color: '', tipo: 'acompañante', anfitrion: item.guestName }));
+            }
+        }
+    });
+    allUsers.filter(u => !usersWithData.has(u)).forEach(name =>
+        filas.push({ nombre: name, color: '', tipo: 'titular', anfitrion: null }));
+
+    // Calcular totales según estado de pago (default: paga = true)
+    const totalPersonas  = filas.length;
+    const pagantes       = filas.filter(f => pagos[_pagoKey(f.nombre, f.anfitrion)] !== false).length;
+    const totalRecaudado = pagantes * APORTE;
+
+    const porColor = { ROJO: 0, VERDE: 0, AMARILLO: 0, '': 0 };
+    filas.forEach(f => { porColor[f.color] = (porColor[f.color] || 0) + 1; });
+
+    // ── Resumen ──────────────────────────────────────────────────
+    let html = `
+    <div style="display:flex;flex-wrap:wrap;gap:.8rem;margin-bottom:1.5rem;">
+        <div style="background:var(--bg-card);border:1px solid var(--gold-primary);border-radius:10px;padding:.8rem 1.3rem;flex:1;min-width:140px;text-align:center;">
+            <div style="font-size:1.8rem;font-weight:700;color:var(--gold-primary);">${totalPersonas}</div>
+            <div style="color:var(--text-muted);font-size:.8rem;margin-top:.2rem;">ASISTENTES TOTALES</div>
+        </div>
+        <div style="background:var(--bg-card);border:1px solid #4ade80;border-radius:10px;padding:.8rem 1.3rem;flex:1;min-width:160px;text-align:center;">
+            <div style="font-size:1.8rem;font-weight:700;color:#4ade80;" id="recaudacion-total-num">$${totalRecaudado.toLocaleString('es-AR')}</div>
+            <div style="color:var(--text-muted);font-size:.8rem;margin-top:.2rem;">RECAUDACIÓN (<span id="recaudacion-pagantes-num">${pagantes}</span> pagan)</div>
+        </div>
+        <div style="background:rgba(220,38,38,.1);border:1px solid #dc2626;border-radius:10px;padding:.8rem 1.3rem;min-width:100px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#dc2626;">🔴 ${porColor['ROJO'] || 0}</div>
+            <div style="color:var(--text-muted);font-size:.78rem;">ROJO</div>
+        </div>
+        <div style="background:rgba(22,163,74,.1);border:1px solid #16a34a;border-radius:10px;padding:.8rem 1.3rem;min-width:100px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#16a34a;">🟢 ${porColor['VERDE'] || 0}</div>
+            <div style="color:var(--text-muted);font-size:.78rem;">VERDE</div>
+        </div>
+        <div style="background:rgba(202,138,4,.1);border:1px solid #ca8a04;border-radius:10px;padding:.8rem 1.3rem;min-width:100px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:#ca8a04;">🟡 ${porColor['AMARILLO'] || 0}</div>
+            <div style="color:var(--text-muted);font-size:.78rem;">AMARILLO</div>
+        </div>
+        ${(porColor[''] || 0) > 0 ? `
+        <div style="background:rgba(100,100,100,.08);border:1px solid var(--border-color);border-radius:10px;padding:.8rem 1.3rem;min-width:100px;text-align:center;">
+            <div style="font-size:1.4rem;font-weight:700;color:var(--text-muted);">⬜ ${porColor['']}</div>
+            <div style="color:var(--text-muted);font-size:.78rem;">SIN COLOR</div>
+        </div>` : ''}
+    </div>`;
+
+    // ── Tabla ────────────────────────────────────────────────────
+    html += `<div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:.88rem;">
+        <thead>
+            <tr style="border-bottom:2px solid var(--border-color);">
+                <th style="text-align:left;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">#</th>
+                <th style="text-align:left;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">NOMBRE</th>
+                <th style="text-align:left;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">TIPO</th>
+                <th style="text-align:left;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">COLOR</th>
+                <th style="text-align:center;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">PAGA</th>
+                <th style="text-align:right;padding:.5rem .8rem;color:var(--text-muted);font-size:.78rem;">APORTE</th>
+            </tr>
+        </thead>
+        <tbody id="asistentes-tbody">`;
+
+    filas.forEach((fila, i) => {
+        const key   = _pagoKey(fila.nombre, fila.anfitrion);
+        const paga  = pagos[key] !== false;  // default true
+
+        const colorPill = fila.color
+            ? `<span style="background:${colorBg[fila.color]};border:1px solid ${colorBdr[fila.color]};border-radius:20px;padding:.1rem .55rem;font-size:.8rem;">${colorEmoji[fila.color]} ${fila.color}</span>`
+            : `<span style="color:var(--text-muted);font-size:.8rem;font-style:italic;">Sin asignar</span>`;
+
+        const tipoPill = fila.tipo === 'titular'
+            ? `<span style="background:rgba(229,169,60,.15);border:1px solid var(--gold-primary);border-radius:20px;padding:.1rem .55rem;font-size:.78rem;color:var(--gold-primary);">👤 Titular</span>`
+            : `<span style="background:rgba(100,100,200,.1);border:1px solid #818cf8;border-radius:20px;padding:.1rem .55rem;font-size:.78rem;color:#818cf8;">👥 Acomp. <span style="font-size:.7rem;color:var(--text-muted);">de ${escapeHTML(fila.anfitrion)}</span></span>`;
+
+        const rowOpacity = paga ? '' : 'opacity:.5;';
+        const aporteCell = paga
+            ? `<span style="color:#4ade80;font-weight:600;">$${APORTE.toLocaleString('es-AR')}</span>`
+            : `<span style="color:var(--text-muted);text-decoration:line-through;font-size:.85rem;">$${APORTE.toLocaleString('es-AR')}</span>`;
+
+        html += `
+            <tr style="border-bottom:1px solid var(--border-color);${fila.tipo==='acompañante'?'background:rgba(100,100,200,.04);':''}${rowOpacity}" id="asist-row-${i}">
+                <td style="padding:.45rem .8rem;color:var(--text-muted);">${i + 1}</td>
+                <td style="padding:.45rem .8rem;font-weight:${fila.tipo==='titular'?'600':'400'};">${escapeHTML(fila.nombre)}</td>
+                <td style="padding:.45rem .8rem;">${tipoPill}</td>
+                <td style="padding:.45rem .8rem;">${colorPill}</td>
+                <td style="padding:.45rem .8rem;text-align:center;">
+                    <input type="checkbox" ${paga ? 'checked' : ''}
+                        style="width:1.1rem;height:1.1rem;accent-color:var(--gold-primary);cursor:pointer;"
+                        onchange="togglePagoAsistente('${key.replace(/'/g,"\\'")}', this)">
+                </td>
+                <td style="padding:.45rem .8rem;text-align:right;">${aporteCell}</td>
+            </tr>`;
+    });
+
+    // Fila total
+    html += `
+            <tr style="border-top:2px solid var(--gold-primary);background:rgba(229,169,60,.07);" id="asist-row-total">
+                <td colspan="5" style="padding:.6rem .8rem;font-weight:700;color:var(--gold-primary);">
+                    TOTAL — <span id="total-pagantes-label">${pagantes}</span> pagan de ${totalPersonas}
+                </td>
+                <td style="padding:.6rem .8rem;text-align:right;font-weight:700;font-size:1.05rem;color:#4ade80;" id="total-recaudado-label">
+                    $${totalRecaudado.toLocaleString('es-AR')}
+                </td>
+            </tr>
+        </tbody>
+    </table></div>`;
+
+    container.innerHTML = html;
+}
+
+// Guarda el estado de pago y actualiza totales en tiempo real sin re-render completo
+async function togglePagoAsistente(key, checkbox) {
+    const settings = await fbGetSettings() || {};
+    const pagos = { ...(settings.pagos || {}) };
+
+    pagos[key] = checkbox.checked;
+    await fbSaveSettings({ ...settings, pagos });
+
+    // Actualizar fila visualmente
+    const row = checkbox.closest('tr');
+    if (row) row.style.opacity = checkbox.checked ? '' : '0.5';
+    const aporteCell = row ? row.querySelector('td:last-child') : null;
+    if (aporteCell) {
+        aporteCell.innerHTML = checkbox.checked
+            ? `<span style="color:#4ade80;font-weight:600;">$20.000</span>`
+            : `<span style="color:var(--text-muted);text-decoration:line-through;font-size:.85rem;">$20.000</span>`;
+    }
+
+    // Recalcular totales en los elementos del resumen y fila final
+    const allCheckboxes = document.querySelectorAll('#asistentes-tbody input[type="checkbox"]');
+    const pagantes = Array.from(allCheckboxes).filter(cb => cb.checked).length;
+    const total    = pagantes * 20000;
+    const fmt      = total.toLocaleString('es-AR');
+
+    const elTotal     = document.getElementById('recaudacion-total-num');
+    const elPagantes  = document.getElementById('recaudacion-pagantes-num');
+    const elTotLabel  = document.getElementById('total-pagantes-label');
+    const elTotRec    = document.getElementById('total-recaudado-label');
+    if (elTotal)    elTotal.textContent    = `$${fmt}`;
+    if (elPagantes) elPagantes.textContent = pagantes;
+    if (elTotLabel) elTotLabel.textContent = pagantes;
+    if (elTotRec)   elTotRec.textContent   = `$${fmt}`;
+}
+
+async function renderAcompaniantes(data) {
+    const container = document.getElementById('grupos-acompaniantes-container');
+    if (!container) return;
+
+    // Recolectar todos los acompañantes de todos los usuarios
+    const filas = [];
+    data.forEach(item => {
+        if (item.asistencia !== 'ACOMPAÑADO') return;
+        if (!Array.isArray(item.coloresAcompaniantes) || item.coloresAcompaniantes.length === 0) {
+            // Tiene acompañantes pero sin colores asignados aún
+            const nombres = (item.nombresAcompaniantes || '').split(',').map(n => n.trim()).filter(Boolean);
+            nombres.forEach((nombre, idx) => {
+                filas.push({ anfitrion: item.guestName, nombre, color: '', idx });
+            });
+        } else {
+            item.coloresAcompaniantes.forEach((ac, idx) => {
+                filas.push({ anfitrion: item.guestName, nombre: ac.nombre, color: ac.color, idx });
+            });
+        }
+    });
+
+    if (filas.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;padding:.5rem 0;">No hay acompañantes registrados aún.</p>';
+        return;
+    }
+
+    const colorEmoji = { ROJO: '🔴', VERDE: '🟢', AMARILLO: '🟡' };
+    const colorBg    = { ROJO: 'rgba(220,38,38,.15)', VERDE: 'rgba(22,163,74,.15)', AMARILLO: 'rgba(202,138,4,.15)' };
+    const colorBdr   = { ROJO: '#dc2626', VERDE: '#16a34a', AMARILLO: '#ca8a04' };
+
+    let html = `<table style="width:100%;border-collapse:collapse;">
+        <thead>
+            <tr style="border-bottom:1px solid var(--border-color);">
+                <th style="text-align:left;padding:.5rem .7rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">ACOMPAÑANTE</th>
+                <th style="text-align:left;padding:.5rem .7rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">ANFITRIÓN</th>
+                <th style="text-align:left;padding:.5rem .7rem;color:var(--text-muted);font-size:.8rem;font-weight:600;">COLOR ASIGNADO</th>
+                <th style="padding:.5rem .7rem;"></th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    filas.forEach((fila, i) => {
+        const pill = fila.color
+            ? `<span style="background:${colorBg[fila.color]};border:1px solid ${colorBdr[fila.color]};border-radius:20px;padding:.15rem .6rem;font-size:.82rem;">
+                    ${colorEmoji[fila.color]} ${fila.color}
+               </span>`
+            : `<span style="color:var(--text-muted);font-size:.82rem;font-style:italic;">Sin asignar</span>`;
+
+        html += `
+            <tr style="border-bottom:1px solid var(--border-color);vertical-align:middle;">
+                <td style="padding:.55rem .7rem;font-weight:600;font-size:.9rem;">${escapeHTML(fila.nombre)}</td>
+                <td style="padding:.55rem .7rem;font-size:.85rem;color:var(--text-muted);">${escapeHTML(fila.anfitrion)}</td>
+                <td style="padding:.55rem .7rem;">${pill}</td>
+                <td style="padding:.55rem .7rem;">
+                    <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+                        <select id="sel-acomp-color-${i}" class="foto-edit-input" style="font-size:.82rem;padding:.25rem .5rem;width:auto;">
+                            <option value="">— elegir —</option>
+                            <option value="ROJO"     ${fila.color === 'ROJO'     ? 'selected' : ''}>🔴 ROJO</option>
+                            <option value="VERDE"    ${fila.color === 'VERDE'    ? 'selected' : ''}>🟢 VERDE</option>
+                            <option value="AMARILLO" ${fila.color === 'AMARILLO' ? 'selected' : ''}>🟡 AMARILLO</option>
+                        </select>
+                        <button type="button"
+                            class="btn-primary"
+                            style="font-size:.78rem;padding:.25rem .7rem;"
+                            onclick="guardarColorAcompaniante('${escapeHTML(fila.anfitrion).replace(/'/g,"\\'")}','${escapeHTML(fila.nombre).replace(/'/g,"\\'")}',document.getElementById('sel-acomp-color-${i}').value, this)">
+                            💾
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table>`;
+    container.innerHTML = html;
+}
+
+async function guardarColorAcompaniante(anfitrion, nombreAcomp, nuevoColor, btn) {
+    if (!nuevoColor) { alert('Seleccioná un color primero.'); return; }
+
+    const existing = await fbGetResponse(anfitrion) || getStoredData().find(d => d.guestName === anfitrion);
+    if (!existing) { alert('No se encontraron datos del anfitrión.'); return; }
+
+    // Asegurar que haya array de coloresAcompaniantes
+    let acomps = Array.isArray(existing.coloresAcompaniantes) ? [...existing.coloresAcompaniantes] : [];
+
+    // Buscar el acompañante por nombre
+    const idx = acomps.findIndex(ac => ac.nombre === nombreAcomp);
+    if (idx >= 0) {
+        acomps[idx] = { ...acomps[idx], color: nuevoColor };
+    } else {
+        // No estaba en el array todavía (caso sin colores previos)
+        acomps.push({ nombre: nombreAcomp, color: nuevoColor });
+    }
+
+    const updated = { ...existing, coloresAcompaniantes: acomps };
+    await fbSaveResponse(updated);
+
+    // Actualizar localStorage
+    const allLocal = getStoredData();
+    const li = allLocal.findIndex(d => d.guestName === anfitrion);
+    if (li >= 0) allLocal[li] = updated;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allLocal));
+
+    if (btn) { btn.textContent = '✅'; setTimeout(() => { btn.textContent = '💾'; }, 1500); }
+
+    // Re-render para reflejar el nuevo color
+    const data = await fbGetAllResponses() || getStoredData();
+    renderAcompaniantes(data);
+    renderEquipos(data);
+}
+
+function renderRankingNeto(data) {
+    const container = document.getElementById('grupos-ranking-neto-container');
+    if (!container) return;
+
+    if (data.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin votos aún.</p>';
+        return;
+    }
+
+    // Acumular puntos netos (positivos - negativos)
+    const scores = {};
+
+    for (let i = 1; i <= 11; i++) {
+        const id = i === 11 ? 'terna11' : `terna${i}`;
+        const isNeg = TERNAS_NEGATIVAS.has(id);
+        // terna10 es texto libre, no tiene votos de persona
+        if (id === 'terna10') continue;
+
+        data.forEach(item => {
+            const v1 = item[`${id}_voto1`];
+            const v2 = item[`${id}_voto2`];
+            const pts1 = isNeg ? -2 : 2;
+            const pts2 = isNeg ? -1 : 1;
+            if (v1) {
+                if (!scores[v1]) scores[v1] = { neto: 0, pos: 0, neg: 0 };
+                scores[v1].neto += pts1;
+                if (pts1 > 0) scores[v1].pos += 2; else scores[v1].neg += 2;
+            }
+            if (v2) {
+                if (!scores[v2]) scores[v2] = { neto: 0, pos: 0, neg: 0 };
+                scores[v2].neto += pts2;
+                if (pts2 > 0) scores[v2].pos += 1; else scores[v2].neg += 1;
+            }
+        });
+    }
+
+    const sorted = Object.entries(scores).sort((a, b) => b[1].neto - a[1].neto);
+
+    if (sorted.length === 0) {
+        container.innerHTML = '<p style="color:var(--text-muted);padding:1rem;">Sin votos aún.</p>';
+        return;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    let html = '<div class="ranking-neto-list">';
+
+    sorted.forEach(([name, stat], idx) => {
+        const isTop3    = idx < 3 && stat.neto > 0;
+        const isNeg     = stat.neto < 0;
+        const medal     = medals[idx] || `<span style="color:var(--text-muted);font-weight:700;">#${idx + 1}</span>`;
+        const ptsCls    = stat.neto > 0 ? 'positive' : stat.neto < 0 ? 'negative' : 'zero';
+        const rowCls    = isTop3 ? 'neto-top3' : isNeg ? 'neto-negative' : '';
+        const sign      = stat.neto > 0 ? '+' : '';
+
+        html += `
+            <div class="ranking-neto-row ${rowCls}">
+                <div class="ranking-neto-pos">${medal}</div>
+                <div class="ranking-neto-name">${escapeHTML(name)}</div>
+                <div class="ranking-neto-pts">
+                    <span class="ranking-neto-pts-num ${ptsCls}">${sign}${stat.neto}</span>
+                    <span style="color:var(--text-muted);font-size:.78rem;"> pts</span>
+                    <div class="ranking-neto-detail">
+                        <span title="Puntos positivos" style="color:#4ade80;">▲ ${stat.pos}</span>
+                        <span title="Puntos negativos" style="color:#f87171;margin-left:.5rem;">▼ ${stat.neg}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
 }
 
 // Abre/cierra un acordeón
@@ -3479,6 +4023,247 @@ function escapeHTML(str) {
     );
 }
 
+// ----------------------------------------------------------
+// PANEL VOTACIÓN DE USUARIOS
+// ----------------------------------------------------------
+async function renderVotacionUsuariosPanel() {
+    const container = document.getElementById('votacion-usuarios-container');
+    if (!container) return;
+
+    const allUsers = getActiveUserList();
+    const data     = await fbGetAllResponses() || getStoredData();
+
+    const colorEmoji = { ROJO: '🔴', VERDE: '🟢', AMARILLO: '🟡' };
+    const colorBdr   = { ROJO: '#dc2626', VERDE: '#16a34a', AMARILLO: '#ca8a04' };
+    const colorBg    = { ROJO: 'rgba(220,38,38,.12)', VERDE: 'rgba(22,163,74,.12)', AMARILLO: 'rgba(202,138,4,.12)' };
+
+    let html = `<div style="overflow-x:auto;">
+    <table class="vot-user-table">
+        <thead>
+            <tr>
+                <th style="width:2rem;">#</th>
+                <th>USUARIO</th>
+                <th>COLOR</th>
+                <th>ASISTENCIA</th>
+                <th>ACOMPAÑANTES</th>
+                <th style="width:3rem;"></th>
+            </tr>
+        </thead>
+        <tbody id="vot-tbody">`;
+
+    allUsers.forEach((name, idx) => {
+        const item = data.find(d => d.guestName === name);
+        const rowId = `vot-row-${idx}`;
+
+        if (!item) {
+            html += `
+            <tr id="${rowId}">
+                <td style="color:var(--text-muted);">${idx + 1}</td>
+                <td><strong>${escapeHTML(name)}</strong></td>
+                <td colspan="3"><span class="vot-no-data">Sin datos cargados</span></td>
+                <td></td>
+            </tr>`;
+            return;
+        }
+
+        const colorPill = item.colorEvento
+            ? `<span class="vot-color-pill" style="background:${colorBg[item.colorEvento]};border:1px solid ${colorBdr[item.colorEvento]};">
+                ${colorEmoji[item.colorEvento]} ${item.colorEvento}</span>`
+            : `<span class="vot-no-data">—</span>`;
+
+        // Construir lista de acompañantes
+        let acompStr = '—';
+        if (item.asistencia === 'ACOMPAÑADO') {
+            if (Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0) {
+                acompStr = item.coloresAcompaniantes.map(ac =>
+                    `<span>${escapeHTML(ac.nombre)} ${colorEmoji[ac.color] || '⬜'}</span>`
+                ).join(', ');
+            } else if (item.nombresAcompaniantes) {
+                acompStr = escapeHTML(item.nombresAcompaniantes);
+            }
+        }
+
+        html += `
+            <tr id="${rowId}">
+                <td style="color:var(--text-muted);">${idx + 1}</td>
+                <td><strong>${escapeHTML(name)}</strong></td>
+                <td>${colorPill}</td>
+                <td><span style="font-size:.85rem;">${item.asistencia === 'ACOMPAÑADO' ? `👥 Acomp. (${item.cantAcompaniantes || '?'})` : item.asistencia === 'SOLO' ? '🧍 Solo/a' : '—'}</span></td>
+                <td><span style="font-size:.83rem;">${acompStr}</span></td>
+                <td>
+                    <button class="vot-edit-trigger" title="Editar" onclick="votAbrirEdicion(${idx})">✏️</button>
+                </td>
+            </tr>`;
+    });
+
+    html += `</tbody></table></div>`;
+    container.innerHTML = html;
+
+    // Guardar referencia a datos para uso en edición
+    container._allUsers = allUsers;
+    container._data     = data;
+}
+
+function votAbrirEdicion(idx) {
+    const container = document.getElementById('votacion-usuarios-container');
+    const allUsers  = container._allUsers;
+    const data      = container._data;
+    const name      = allUsers[idx];
+    const item      = data.find(d => d.guestName === name) || {};
+    const rowId     = `vot-row-${idx}`;
+    const row       = document.getElementById(rowId);
+    if (!row) return;
+
+    // Construir nombres de acompañantes para edición
+    let acompsActuales = [];
+    if (item.asistencia === 'ACOMPAÑADO') {
+        if (Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0) {
+            acompsActuales = item.coloresAcompaniantes.map(ac => ac.nombre);
+        } else if (item.nombresAcompaniantes) {
+            acompsActuales = item.nombresAcompaniantes.split(',').map(n => n.trim()).filter(Boolean);
+        }
+    }
+    // Asegurar al menos 1 campo si es ACOMPAÑADO
+    const cantActual = parseInt(item.cantAcompaniantes) || acompsActuales.length || 1;
+    while (acompsActuales.length < cantActual) acompsActuales.push('');
+
+    const acompInputs = acompsActuales.map((nombre, i) => `
+        <div class="vot-acomp-edit-row">
+            <span style="color:var(--text-muted);font-size:.78rem;min-width:1.2rem;">${i + 1}.</span>
+            <input class="vot-edit-field" id="vot-acomp-${idx}-${i}" type="text" value="${escapeHTML(nombre)}" placeholder="Nombre acompañante ${i + 1}">
+        </div>`).join('');
+
+    row.className = 'vot-edit-row';
+    row.innerHTML = `
+        <td style="color:var(--text-muted);">${idx + 1}</td>
+        <td><strong>${escapeHTML(name)}</strong></td>
+        <td>
+            <select class="vot-edit-field" id="vot-color-${idx}">
+                <option value="">— sin color —</option>
+                <option value="ROJO"     ${item.colorEvento === 'ROJO'     ? 'selected' : ''}>🔴 ROJO</option>
+                <option value="VERDE"    ${item.colorEvento === 'VERDE'    ? 'selected' : ''}>🟢 VERDE</option>
+                <option value="AMARILLO" ${item.colorEvento === 'AMARILLO' ? 'selected' : ''}>🟡 AMARILLO</option>
+            </select>
+        </td>
+        <td>
+            <select class="vot-edit-field" id="vot-asist-${idx}" onchange="votToggleAcompFields(${idx})">
+                <option value="SOLO"      ${(item.asistencia || 'SOLO') === 'SOLO'      ? 'selected' : ''}>🧍 Solo/a</option>
+                <option value="ACOMPAÑADO" ${item.asistencia === 'ACOMPAÑADO' ? 'selected' : ''}>👥 Acompañado/a</option>
+            </select>
+        </td>
+        <td id="vot-acomp-fields-${idx}">
+            ${item.asistencia === 'ACOMPAÑADO' ? `
+                <input class="vot-edit-field" id="vot-cant-${idx}" type="number" min="1" max="5"
+                    value="${cantActual}" style="width:4rem;margin-bottom:.3rem;"
+                    onchange="votAjustarCamposAcomp(${idx})"
+                    placeholder="Cant.">
+                <div class="vot-acomp-edit-list" id="vot-acomp-list-${idx}">${acompInputs}</div>
+            ` : '<span class="vot-no-data">Solo/a</span>'}
+        </td>
+        <td>
+            <div style="display:flex;gap:.3rem;flex-direction:column;">
+                <button class="vot-save-btn" onclick="votGuardar(${idx})">💾 Guardar</button>
+                <button class="vot-cancel-btn" onclick="renderVotacionUsuariosPanel()">✕</button>
+            </div>
+        </td>`;
+}
+
+function votToggleAcompFields(idx) {
+    const sel    = document.getElementById(`vot-asist-${idx}`);
+    const fields = document.getElementById(`vot-acomp-fields-${idx}`);
+    if (!sel || !fields) return;
+    if (sel.value === 'ACOMPAÑADO') {
+        fields.innerHTML = `
+            <input class="vot-edit-field" id="vot-cant-${idx}" type="number" min="1" max="5"
+                value="1" style="width:4rem;margin-bottom:.3rem;"
+                onchange="votAjustarCamposAcomp(${idx})" placeholder="Cant.">
+            <div class="vot-acomp-edit-list" id="vot-acomp-list-${idx}">
+                <div class="vot-acomp-edit-row">
+                    <span style="color:var(--text-muted);font-size:.78rem;min-width:1.2rem;">1.</span>
+                    <input class="vot-edit-field" id="vot-acomp-${idx}-0" type="text" placeholder="Nombre acompañante 1">
+                </div>
+            </div>`;
+    } else {
+        fields.innerHTML = '<span class="vot-no-data">Solo/a</span>';
+    }
+}
+
+function votAjustarCamposAcomp(idx) {
+    const cantInput = document.getElementById(`vot-cant-${idx}`);
+    const list      = document.getElementById(`vot-acomp-list-${idx}`);
+    if (!cantInput || !list) return;
+    const cant = Math.max(1, Math.min(5, parseInt(cantInput.value) || 1));
+    // Leer valores actuales
+    const current = [];
+    list.querySelectorAll('input').forEach(inp => current.push(inp.value));
+    list.innerHTML = '';
+    for (let i = 0; i < cant; i++) {
+        list.innerHTML += `
+            <div class="vot-acomp-edit-row">
+                <span style="color:var(--text-muted);font-size:.78rem;min-width:1.2rem;">${i + 1}.</span>
+                <input class="vot-edit-field" id="vot-acomp-${idx}-${i}" type="text"
+                    value="${escapeHTML(current[i] || '')}" placeholder="Nombre acompañante ${i + 1}">
+            </div>`;
+    }
+}
+
+async function votGuardar(idx) {
+    const container = document.getElementById('votacion-usuarios-container');
+    const allUsers  = container._allUsers;
+    const data      = container._data;
+    const name      = allUsers[idx];
+
+    const nuevoColor = document.getElementById(`vot-color-${idx}`)?.value || '';
+    const nuevaAsist = document.getElementById(`vot-asist-${idx}`)?.value || 'SOLO';
+    const cantInput  = document.getElementById(`vot-cant-${idx}`);
+    const cant       = cantInput ? (parseInt(cantInput.value) || 0) : 0;
+
+    // Recolectar nombres de acompañantes
+    const nuevosNombres = [];
+    for (let i = 0; i < cant; i++) {
+        const v = document.getElementById(`vot-acomp-${idx}-${i}`)?.value.trim() || '';
+        nuevosNombres.push(v);
+    }
+
+    const existing = data.find(d => d.guestName === name);
+    if (!existing) { alert('Este usuario no tiene datos cargados todavía.'); return; }
+
+    // Actualizar coloresAcompaniantes: conservar colores ya asignados, corregir nombres
+    let coloresAcomp = Array.isArray(existing.coloresAcompaniantes)
+        ? existing.coloresAcompaniantes.map((ac, i) => ({
+            nombre: nuevosNombres[i] !== undefined ? (nuevosNombres[i] || ac.nombre) : ac.nombre,
+            color:  ac.color
+          }))
+        : [];
+
+    // Si hay más nombres nuevos que los existentes, agregar sin color
+    for (let i = coloresAcomp.length; i < nuevosNombres.length; i++) {
+        if (nuevosNombres[i]) coloresAcomp.push({ nombre: nuevosNombres[i], color: '' });
+    }
+    // Si hay menos, recortar
+    coloresAcomp = coloresAcomp.slice(0, nuevosNombres.length);
+
+    const updated = {
+        ...existing,
+        colorEvento:          nuevoColor,
+        asistencia:           nuevaAsist,
+        cantAcompaniantes:    nuevaAsist === 'ACOMPAÑADO' ? cant : 0,
+        nombresAcompaniantes: nuevaAsist === 'ACOMPAÑADO' ? nuevosNombres.join(', ') : '',
+        coloresAcompaniantes: nuevaAsist === 'ACOMPAÑADO' ? coloresAcomp : [],
+    };
+
+    await fbSaveResponse(updated);
+
+    // Actualizar localStorage
+    const allLocal = getStoredData();
+    const li = allLocal.findIndex(d => d.guestName === name);
+    if (li >= 0) allLocal[li] = updated; else allLocal.push(updated);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(allLocal));
+
+    // Re-renderizar panel completo
+    renderVotacionUsuariosPanel();
+}
+
 // Exponer funciones globales para los onclick del HTML (requerido con type="module")
 Object.assign(window, {
     goToStep, unlockNextStep, validateAndNext, toggleAcompaniantes,
@@ -3493,5 +4278,8 @@ Object.assign(window, {
     abrirVistaPreviaImpresion,
     adminAgregarFecha, adminEliminarFecha, adminGuardarConfigFechas,
     abrirCambioFechaVoto, onToggleUsarFechaVotada,
-    resetContadorUsuario
+    resetContadorUsuario, renderGruposPanel, guardarColorAcompaniante,
+    togglePagoAsistente,
+    renderVotacionUsuariosPanel, votAbrirEdicion, votToggleAcompFields,
+    votAjustarCamposAcomp, votGuardar
 });
