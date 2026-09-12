@@ -283,6 +283,8 @@ async function applyUserSession(user) {
         if (btnGruposNav) btnGruposNav.style.display = 'inline-block';
         const btnVotacionNav = document.getElementById('btn-open-votacion-modal');
         if (btnVotacionNav) btnVotacionNav.style.display = 'inline-block';
+        const btnMisDatos = document.getElementById('btn-mis-datos-admin');
+        if (btnMisDatos) btnMisDatos.style.display = 'inline-block';
         maxAllowedStep = 5;
         userHasCompleted = true;
         document.getElementById('main-nav').style.display = 'flex';
@@ -766,7 +768,11 @@ function initGuestForm() {
         const prev = await fbGetResponse(newEntry.guestName)
             || getStoredData().find(d => d.guestName === newEntry.guestName);
 
-        if (prev) {
+        // Admin no consume intentos: preservar contadores existentes o dejar en 0
+        if (loggedUser && loggedUser.isAdmin) {
+            newEntry.editCount           = prev ? (prev.editCount           || 0) : 0;
+            newEntry.editCountAsistencia = prev ? (prev.editCountAsistencia || 0) : 0;
+        } else if (prev) {
             newEntry.editCount = (prev.editCount || 0) + 1;
             const asistCambia = (prev.colorEvento         !== newEntry.colorEvento)    ||
                                  (prev.asistencia           !== newEntry.asistencia)     ||
@@ -787,16 +793,21 @@ function initGuestForm() {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 
         // Mostrar Modal de éxito con info de cambios restantes (votación)
-        const remaining = MAX_EDITS - newEntry.editCount;
-        const remAsist  = MAX_EDITS_ASIST - (newEntry.editCountAsistencia || 0);
         const modalP = document.querySelector('#success-modal .modal-content p:first-of-type');
-        if (modalP && remaining > 0) {
-            modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
-                <small style="color:var(--text-muted);">Podés modificar tu votación hasta ${remaining} vez${remaining !== 1 ? 'es' : ''} más
-                · Asistencia hasta ${Math.max(0,remAsist)} vez${remAsist !== 1 ? 'es' : ''} más.</small>`;
-        } else if (modalP && remaining <= 0) {
-            modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
-                <small style="color:#f87171;">🔒 Alcanzaste el límite de cambios de votación.</small>`;
+        if (loggedUser && loggedUser.isAdmin) {
+            if (modalP) modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
+                <small style="color:var(--text-muted);">👑 Guardado sin consumir intentos (modo administrador).</small>`;
+        } else {
+            const remaining = MAX_EDITS - newEntry.editCount;
+            const remAsist  = MAX_EDITS_ASIST - (newEntry.editCountAsistencia || 0);
+            if (modalP && remaining > 0) {
+                modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
+                    <small style="color:var(--text-muted);">Podés modificar tu votación hasta ${remaining} vez${remaining !== 1 ? 'es' : ''} más
+                    · Asistencia hasta ${Math.max(0,remAsist)} vez${remAsist !== 1 ? 'es' : ''} más.</small>`;
+            } else if (modalP && remaining <= 0) {
+                modalP.innerHTML = `Tus datos quedaron guardados en producción de <strong>"Prod1g0 2026"</strong>.<br>
+                    <small style="color:#f87171;">🔒 Alcanzaste el límite de cambios de votación.</small>`;
+            }
         }
 
         successModal.classList.add('active');
@@ -821,14 +832,22 @@ async function resetWizardAndCloseModal() {
     const heroStartBtn = document.getElementById('btn-hero-start');
     if (heroStartBtn) heroStartBtn.style.display = 'none';
 
-    if (loggedUser && !loggedUser.isAdmin) {
+    if (loggedUser && loggedUser.isAdmin) {
+        // Restaurar nav del admin
+        document.getElementById('main-nav').style.display = 'flex';
+        document.getElementById('timeline-section').style.display = 'block';
+        setNavMode('site');
+        const btnMisDatos = document.getElementById('btn-mis-datos-admin');
+        if (btnMisDatos) btnMisDatos.style.display = 'inline-block';
+        initPersonajesPage();
+    } else if (loggedUser) {
         document.getElementById('main-nav').style.display = 'flex';
         document.getElementById('timeline-section').style.display = 'block';
         setNavMode('site');
         initPersonajesPage();
     }
 
-    if (loggedUser) refreshSessionState();
+    if (loggedUser && !loggedUser.isAdmin) refreshSessionState();
     goToStep(0);
 
     // Mostrar modal de fecha si nunca votó (usuario que acaba de completar el wizard)
@@ -1668,7 +1687,7 @@ async function openPersonajeModal(name) {
 // PÁGINA 6: CAMBIAR VOTACIÓN
 // ----------------------------------------------------------
 async function renderCambiarDatosPage() {
-    if (!loggedUser || loggedUser.isAdmin) return;
+    if (!loggedUser) return;
 
     const existing = await fbGetResponse(loggedUser.name)
         || getStoredData().find(d => d.guestName === loggedUser.name);
@@ -1676,6 +1695,31 @@ async function renderCambiarDatosPage() {
     const actionsEl = document.getElementById('cambiar-datos-actions');
     if (!infoEl || !actionsEl) return;
 
+    // ── VISTA ADMIN: acceso directo sin restricciones de intentos ───────
+    if (loggedUser.isAdmin) {
+        if (!existing) {
+            infoEl.innerHTML = '👑 No hay datos cargados para tu usuario todavía. Podés completar el formulario usando el botón de inicio.';
+            actionsEl.innerHTML = `
+                <button type="button" class="cd-btn-yes" onclick="startEditFromCambiarDatosAdmin()">✏️ Ir al formulario</button>
+                <button type="button" class="cd-btn-no" onclick="goToStep(0)">⬅ Volver al Inicio</button>
+            `;
+        } else {
+            infoEl.innerHTML = `
+                <strong>👑 Modo Administrador</strong> — Podés editar cualquier sección sin restricciones de intentos.
+                <br><small style="color:var(--text-muted);">Tus cambios se guardan sin consumir intentos.</small>
+            `;
+            actionsEl.innerHTML = `
+                <button type="button" class="cd-btn-yes" onclick="startEditFromCambiarDatosAdmin()">✏️ Editar mis datos</button>
+                <button type="button" class="cd-btn-no" onclick="goToStep(0)">⬅ Volver al Inicio</button>
+            `;
+        }
+        // Ocultar la card de votación de fecha para admin (la maneja el panel admin)
+        const fechaCard = document.getElementById('cambiar-fecha-card');
+        if (fechaCard) fechaCard.style.display = 'none';
+        return;
+    }
+
+    // ── VISTA USUARIO REGULAR ────────────────────────────────────────────
     if (!existing) {
         infoEl.innerHTML = 'No encontramos datos cargados para tu usuario. Completá el formulario primero.';
         actionsEl.innerHTML = `
@@ -1740,6 +1784,22 @@ async function startEditFromCambiarDatos() {
         const progressBar = document.querySelector('.wizard-progress-container');
         if (progressBar) progressBar.style.display = 'flex';
     }
+    goToStep(1);
+}
+
+async function startEditFromCambiarDatosAdmin() {
+    const existing = await fbGetResponse(loggedUser.name)
+        || getStoredData().find(d => d.guestName === loggedUser.name);
+    if (existing) {
+        prefillFormWithExisting(existing);
+    }
+    setTernasMode('scroll');
+    // Mostrar pestañas de wizard para poder navegar entre secciones del form
+    document.querySelectorAll('.wizard-only-btn').forEach(btn => { btn.style.display = ''; });
+    document.querySelectorAll('.site-only-btn').forEach(btn => { btn.style.display = 'none'; });
+    document.getElementById('btn-mis-datos-admin').style.display = 'none';
+    const progressBar = document.querySelector('.wizard-progress-container');
+    if (progressBar) progressBar.style.display = 'flex';
     goToStep(1);
 }
 
@@ -3220,13 +3280,15 @@ function abrirVistaPreviaImpresion() {
     }
 
     const opts = {
-        ganadores: document.getElementById('print-opt-ganadores')?.checked,
-        ranking:   document.getElementById('print-opt-ranking')?.checked,
-        platino:   document.getElementById('print-opt-platino')?.checked,
-        descargos: document.getElementById('print-opt-descargos')?.checked,
-        gratitud:  document.getElementById('print-opt-gratitud')?.checked,
-        colores:   document.getElementById('print-opt-colores')?.checked,
-        cultura:   document.getElementById('print-opt-cultura')?.checked,
+        ganadores:    document.getElementById('print-opt-ganadores')?.checked,
+        ranking:      document.getElementById('print-opt-ranking')?.checked,
+        platino:      document.getElementById('print-opt-platino')?.checked,
+        descargos:    document.getElementById('print-opt-descargos')?.checked,
+        gratitud:     document.getElementById('print-opt-gratitud')?.checked,
+        colores:      document.getElementById('print-opt-colores')?.checked,
+        cultura:      document.getElementById('print-opt-cultura')?.checked,
+        rankingNeto:  document.getElementById('print-opt-ranking-neto')?.checked,
+        asistentes:   document.getElementById('print-opt-asistentes')?.checked,
     };
 
     const colorEmoji = { ROJO: '🔴', AMARILLO: '🟡', VERDE: '🟢' };
@@ -3375,6 +3437,87 @@ function abrirVistaPreviaImpresion() {
                 <td>${ce} <strong>${escapeHTML(item.colorEvento||'—')}</strong></td>
                 <td>${item.asistencia === 'ACOMPAÑADO' ? `👥 Acomp. (${item.cantAcompaniantes})` : '🧍 Solo/a'}</td>
                 <td><small>${acomp}</small></td>
+            </tr>`;
+        });
+        html += `</tbody></table>`;
+    }
+
+    // ── RANKING NETO ─────────────────────────────────────────────────────
+    if (opts.rankingNeto) {
+        const netoScores = {};
+        for (let i = 1; i <= 11; i++) {
+            const id = `terna${i}`;
+            if (id === 'terna10') continue;
+            const isNeg = TERNAS_NEGATIVAS.has(id);
+            data.forEach(item => {
+                const v1 = item[`${id}_voto1`];
+                const v2 = item[`${id}_voto2`];
+                const pts1 = isNeg ? -2 : 2;
+                const pts2 = isNeg ? -1 : 1;
+                if (v1) {
+                    if (!netoScores[v1]) netoScores[v1] = { neto: 0, pos: 0, neg: 0 };
+                    netoScores[v1].neto += pts1;
+                    if (pts1 > 0) netoScores[v1].pos += 2; else netoScores[v1].neg += 2;
+                }
+                if (v2) {
+                    if (!netoScores[v2]) netoScores[v2] = { neto: 0, pos: 0, neg: 0 };
+                    netoScores[v2].neto += pts2;
+                    if (pts2 > 0) netoScores[v2].pos += 1; else netoScores[v2].neg += 1;
+                }
+            });
+        }
+        const netoSorted = Object.entries(netoScores).sort((a, b) => b[1].neto - a[1].neto);
+        const netoMedals = ['🥇', '🥈', '🥉'];
+        html += `<h2>🏅 Ranking Neto — Positivos menos Negativos</h2>
+        <table><thead><tr><th>#</th><th>Nombre</th><th>Neto</th><th>▲ Pos</th><th>▼ Neg</th></tr></thead><tbody>`;
+        if (netoSorted.length === 0) {
+            html += `<tr><td colspan="5" style="color:#9ca3af;font-style:italic;">Sin votos registrados.</td></tr>`;
+        } else {
+            netoSorted.forEach(([name, stat], idx) => {
+                const sign = stat.neto > 0 ? '+' : '';
+                const netoColor = stat.neto > 0 ? '#16a34a' : stat.neto < 0 ? '#dc2626' : '#6b7280';
+                html += `<tr ${idx < 3 && stat.neto > 0 ? 'class="winner-row"' : ''}>
+                    <td class="medal">${netoMedals[idx] || '#' + (idx + 1)}</td>
+                    <td>${escapeHTML(name)}</td>
+                    <td style="font-weight:700;color:${netoColor};">${sign}${stat.neto} pts</td>
+                    <td style="color:#16a34a;">+${stat.pos}</td>
+                    <td style="color:#dc2626;">-${stat.neg}</td>
+                </tr>`;
+            });
+        }
+        html += `</tbody></table>`;
+    }
+
+    // ── LISTA DE ASISTENTES ──────────────────────────────────────────────
+    if (opts.asistentes) {
+        const colorEmoji2 = { ROJO: '🔴', AMARILLO: '🟡', VERDE: '🟢' };
+        const filas = [];
+        const usersWithData = new Set(data.map(d => d.guestName));
+        data.forEach(item => {
+            filas.push({ nombre: item.guestName, color: item.colorEvento || '', tipo: 'Titular', anfitrion: null });
+            if (item.asistencia === 'ACOMPAÑADO') {
+                if (Array.isArray(item.coloresAcompaniantes) && item.coloresAcompaniantes.length > 0) {
+                    item.coloresAcompaniantes.forEach(ac =>
+                        filas.push({ nombre: ac.nombre, color: ac.color || '', tipo: 'Acomp.', anfitrion: item.guestName }));
+                } else if (item.nombresAcompaniantes) {
+                    (item.nombresAcompaniantes || '').split(',').map(n => n.trim()).filter(Boolean).forEach(nombre =>
+                        filas.push({ nombre, color: '', tipo: 'Acomp.', anfitrion: item.guestName }));
+                }
+            }
+        });
+        getActiveUserList().filter(u => !usersWithData.has(u)).forEach(name =>
+            filas.push({ nombre: name, color: '', tipo: 'Titular', anfitrion: null }));
+
+        html += `<h2>👥 Lista de Asistentes con Color</h2>
+        <table><thead><tr><th>#</th><th>Nombre</th><th>Tipo</th><th>Color</th><th>Anfitrión</th></tr></thead><tbody>`;
+        filas.forEach((f, idx) => {
+            const ce = colorEmoji2[f.color] || '⬜';
+            html += `<tr>
+                <td>${idx + 1}</td>
+                <td>${f.tipo === 'Acomp.' ? '&nbsp;&nbsp;&nbsp;└ ' : ''}${escapeHTML(f.nombre)}</td>
+                <td style="color:#6b7280;font-size:.82rem;">${f.tipo}</td>
+                <td>${ce} ${escapeHTML(f.color || '—')}</td>
+                <td style="color:#6b7280;font-size:.82rem;">${f.anfitrion ? escapeHTML(f.anfitrion) : '—'}</td>
             </tr>`;
         });
         html += `</tbody></table>`;
@@ -4269,7 +4412,7 @@ Object.assign(window, {
     goToStep, unlockNextStep, validateAndNext, toggleAcompaniantes,
     resetWizardAndCloseModal, ternaWizardNext, ternaWizardPrev,
     toggleAccord, toggleSubTab, renderAdminPanel,
-    startEditFromCambiarDatos, renderCambiarDatosPage,
+    startEditFromCambiarDatos, startEditFromCambiarDatosAdmin, renderCambiarDatosPage,
     openPersonajeModal, guardarEdicionPersonaje,
     guardarClave, toggleAdminFlag, eliminarUsuario,
     abrirModalAgregarUsuario, cerrarModalAgregarUsuario, confirmarAgregarUsuario,

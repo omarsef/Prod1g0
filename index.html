@@ -86,6 +86,8 @@
                 <!-- NAV MODO SITE (visible solo tras completar) -->
                 <button class="nav-tab-btn site-only-btn" data-step="6" style="display:none;">🎭 Personajes</button>
                 <button class="nav-tab-btn site-only-btn" data-step="7" style="display:none;">🔄 Cambiar Votación</button>
+                <!-- NAV ADMIN (visible solo para admin) -->
+                <button id="btn-mis-datos-admin" class="nav-tab-btn" data-step="7" style="display:none;">✏️ Mis Datos</button>
                 <button id="btn-open-admin-modal" class="btn-admin-nav" style="display: none;">🔒 Panel Producción</button>
                 <button id="btn-open-grupos-modal" class="btn-admin-nav btn-grupos-nav" style="display: none;">🎨 Panel de Grupos</button>
                 <button id="btn-open-votacion-modal" class="btn-admin-nav btn-votacion-nav" style="display: none;">📋 Votación de USUARIOS</button>
@@ -1120,6 +1122,14 @@
                             <label class="print-option-label">
                                 <input type="checkbox" id="print-opt-cultura">
                                 🎬 Gustos culturales y música
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-ranking-neto" checked>
+                                🏅 Ranking Neto (votos positivos menos negativos)
+                            </label>
+                            <label class="print-option-label">
+                                <input type="checkbox" id="print-opt-asistentes" checked>
+                                👥 Lista de asistentes con color
                             </label>
                         </div>
                         <button type="button" class="btn-primary" style="margin-top:1.5rem;width:100%;font-size:1rem;padding:.8rem;" onclick="abrirVistaPreviaImpresion()">
